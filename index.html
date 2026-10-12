@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>حرس المجرّة</title>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --space: #0a0b24;
+    --ship: #5ee7ff;
+    --laser: #fff27a;
+    --alien: #7cfc9a;
+    --danger: #ff5c7a;
+    --text: #e8ecff;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: inherit; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--space);
+    color: var(--text);
+    font-family: "Tajawal", "Segoe UI", Tahoma, sans-serif;
+    font-weight: 500;
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+  }
+  #app { height: 100%; display: flex; flex-direction: column; max-width: 560px; margin: 0 auto; }
+  #hud { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
+  #score { font-family: "Lalezar", "Tajawal", sans-serif; font-size: 2rem; line-height: 1; color: var(--laser); }
+  #best { font-size: .95rem; opacity: .75; }
+  #lives { font-size: 1.4rem; letter-spacing: 4px; color: var(--danger); }
+  #stage { position: relative; flex: 1; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  #overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; gap: 14px;
+    padding: 24px; background: rgba(10, 11, 36, .8);
+  }
+  #overlay.hidden { display: none; }
+  h1 { font-family: "Lalezar", "Tajawal", sans-serif; font-weight: 400; font-size: 3.2rem; margin: 0; color: var(--ship); }
+  p { margin: 0; max-width: 30ch; line-height: 1.7; }
+  button {
+    font: inherit; font-weight: 700; font-size: 1.2rem; cursor: pointer;
+    background: var(--laser); color: #2e2900; border: 0; border-radius: 999px;
+    padding: 12px 36px; margin-top: 6px;
+  }
+  button:focus-visible { outline: 3px solid var(--ship); outline-offset: 3px; }
+  button:active { transform: scale(.97); }
+  #mute {
+    position: absolute; top: 4px; left: 10px; z-index: 2; margin: 0;
+    width: 42px; height: 42px; padding: 0; font-size: 1.25rem; line-height: 1;
+    background: rgba(255,255,255,.12); color: var(--text); border-radius: 50%;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best">الأفضل: 0</div>
+    <div id="lives" aria-label="الأرواح">♥♥♥</div>
+  </div>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="overlay">
+      <h1 id="ovTitle">حرس المجرّة</h1>
+      <p id="ovText">حرّك مركبتك بإصبعك، وهي تطلق النار تلقائيًا. أوقف المخلوقات قبل أن تصل إليك.</p>
+      <button id="startBtn">ابدأ المعركة</button>
+    </div>
+    <button id="mute" aria-label="تشغيل أو إيقاف الصوت">🔊</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var scoreEl = document.getElementById('score');
+  var livesEl = document.getElementById('lives');
+  var bestEl = document.getElementById('best');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovText = document.getElementById('ovText');
+  var startBtn = document.getElementById('startBtn');
+  var muteBtn = document.getElementById('mute');
+
+  /* ---------- الصوت (مولَّد بالكود، بدون ملفات) ---------- */
+  var audioCtx = null, muted = false;
+  try { muted = localStorage.getItem('galaxy_muted') === '1'; } catch (e) {}
+  muteBtn.textContent = muted ? '🔇' : '🔊';
+
+  function ensureAudio() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) {}
+  }
+  function tone(f0, f1, dur, type, vol, delay) {
+    if (muted || !audioCtx) return;
+    var t = audioCtx.currentTime + (delay || 0);
+    var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol) {
+    if (muted || !audioCtx) return;
+    var n = Math.floor(audioCtx.sampleRate * dur);
+    var buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    var s = audioCtx.createBufferSource(), g = audioCtx.createGain(), f = audioCtx.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 1200;
+    s.buffer = buf; g.gain.value = vol;
+    s.connect(f); f.connect(g); g.connect(audioCtx.destination); s.start();
+  }
+  var sfx = {
+    shoot: function () { tone(880, 300, 0.09, 'square', 0.02); },
+    hit: function () { tone(300, 150, 0.05, 'triangle', 0.06); },
+    boom: function (big) { noise(big ? 0.4 : 0.22, big ? 0.3 : 0.2); tone(big ? 140 : 200, 40, big ? 0.35 : 0.2, 'sawtooth', 0.07); },
+    hurt: function () { noise(0.35, 0.35); tone(220, 60, 0.35, 'square', 0.06); },
+    start: function () { tone(440, 440, 0.1, 'square', 0.04, 0); tone(660, 660, 0.1, 'square', 0.04, 0.1); tone(880, 880, 0.18, 'square', 0.04, 0.2); },
+    over: function () { tone(400, 100, 0.7, 'sawtooth', 0.07); tone(300, 70, 0.8, 'triangle', 0.07, 0.2); }
+  };
+
+  /* ---------- اللعبة ---------- */
+  var W = 0, H = 0, S = 1;
+  var best = 0;
+  try { best = parseInt(localStorage.getItem('galaxy_best') || '0', 10) || 0; } catch (e) {}
+  bestEl.textContent = 'الأفضل: ' + best;
+
+  var running = false, score = 0, lives = 3, spawnT = 0, fireT = 0, last = 0, clock = 0;
+  var aliens = [], bullets = [], parts = [], stars = [];
+  var ship = { x: 0, target: 0, inv: 0 };
+  var keys = {};
+
+  function resize() {
+    var dpr = window.devicePixelRatio || 1;
+    W = cv.clientWidth; H = cv.clientHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    S = Math.max(0.6, Math.min(1.3, H / 640));
+    if (!ship.x) { ship.x = ship.target = W / 2; }
+    ship.x = Math.min(ship.x, W); ship.target = Math.min(ship.target, W);
+  }
+  window.addEventListener('resize', resize);
+
+  for (var i = 0; i < 60; i++) stars.push({ x: Math.random(), y: Math.random(), z: 0.3 + Math.random() * 0.9 });
+
+  function hearts() { var s = ''; for (var i = 0; i < 3; i++) s += i < lives ? '♥' : '♡'; livesEl.textContent = s; }
+
+  function reset() {
+    score = 0; lives = 3; aliens = []; bullets = []; parts = []; spawnT = 0.5; fireT = 0; clock = 0;
+    scoreEl.textContent = '0'; hearts();
+    ship.x = ship.target = W / 2; ship.inv = 0;
+  }
+
+  function start() {
+    reset();
+    overlay.classList.add('hidden');
+    ensureAudio(); sfx.start();
+    running = true; last = performance.now();
+    requestAnimationFrame(loop);
+  }
+
+  function end() {
+    running = false;
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem('galaxy_best', String(best)); } catch (e) {}
+      bestEl.textContent = 'الأفضل: ' + best;
+      ovText.textContent = 'رقم قياسي جديد! حققت ' + score + ' نقطة.';
+    } else {
+      ovText.textContent = 'حققت ' + score + ' نقطة. أفضل نتيجة لك ' + best + '.';
+    }
+    ovTitle.textContent = 'سقطت المركبة';
+    sfx.over();
+    startBtn.textContent = 'قاتل من جديد';
+    overlay.classList.remove('hidden');
+    startBtn.focus();
+  }
+
+  function burst(x, y, color, n) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 6.283, v = (40 + Math.random() * 160) * S;
+      parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.4 + Math.random() * 0.4, c: color });
+    }
+  }
+
+  function hurt() {
+    lives--; hearts();
+    ship.inv = 1.4;
+    sfx.hurt();
+    burst(ship.x, H - 50 * S, '#ff5c7a', 22);
+    if (lives <= 0) end();
+  }
+
+  function spawn() {
+    var r = Math.random();
+    var type = r < 0.18 + Math.min(score, 150) * 0.001 ? 'big' : (r < 0.55 ? 'zig' : 'small');
+    var d = {
+      small: { r: 16, hp: 1, v: 85, c: '#7cfc9a', pts: 1 },
+      zig:   { r: 15, hp: 1, v: 105, c: '#ff7ad9', pts: 2 },
+      big:   { r: 27, hp: 4, v: 55, c: '#ffb347', pts: 5 }
+    }[type];
+    var rad = d.r * S;
+    aliens.push({
+      type: type, r: rad, hp: d.hp, max: d.hp, c: d.c, pts: d.pts,
+      x: rad + Math.random() * (W - rad * 2), x0: 0, y: -rad,
+      v: d.v * S * Math.min(2.2, 1 + score * 0.01),
+      ph: Math.random() * 6, flash: 0
+    });
+    aliens[aliens.length - 1].x0 = aliens[aliens.length - 1].x;
+  }
+
+  function fire() {
+    sfx.shoot();
+    var level = Math.min(2, Math.floor(score / 30));
+    var offs = level === 0 ? [0] : level === 1 ? [-9, 9] : [-14, 0, 14];
+    for (var i = 0; i < offs.length; i++) {
+      bullets.push({ x: ship.x + offs[i] * S, y: H - 66 * S, v: 560 * S });
+    }
+  }
+
+  function update(dt) {
+    clock += dt;
+    var sp = 560 * S * dt;
+    if (keys.ArrowLeft) ship.target -= sp;
+    if (keys.ArrowRight) ship.target += sp;
+    ship.target = Math.max(18 * S, Math.min(W - 18 * S, ship.target));
+    ship.x += (ship.target - ship.x) * Math.min(1, dt * 18);
+    if (ship.inv > 0) ship.inv -= dt;
+
+    fireT -= dt;
+    if (fireT <= 0) { fire(); fireT = 0.2; }
+
+    spawnT -= dt;
+    if (spawnT <= 0) { spawn(); spawnT = Math.max(0.35, 1.0 - score * 0.006); }
+
+    for (var i = bullets.length - 1; i >= 0; i--) {
+      bullets[i].y -= bullets[i].v * dt;
+      if (bullets[i].y < -10) bullets.splice(i, 1);
+    }
+
+    var shipY = H - 50 * S;
+    for (var a = aliens.length - 1; a >= 0; a--) {
+      var al = aliens[a];
+      al.y += al.v * dt;
+      if (al.type === 'zig') al.x = al.x0 + Math.sin(clock * 3 + al.ph) * 34 * S;
+      if (al.flash > 0) al.flash -= dt;
+
+      // bullet hits
+      for (var b = bullets.length - 1; b >= 0; b--) {
+        var dx = bullets[b].x - al.x, dy = bullets[b].y - al.y;
+        if (dx * dx + dy * dy < (al.r + 4 * S) * (al.r + 4 * S)) {
+          bullets.splice(b, 1); al.hp--; al.flash = 0.08; sfx.hit();
+          burst(al.x, al.y, al.c, 3);
+        }
+      }
+      if (al.hp <= 0) {
+        score += al.pts; scoreEl.textContent = score;
+        sfx.boom(al.type === 'big');
+        burst(al.x, al.y, al.c, 16);
+        aliens.splice(a, 1); continue;
+      }
+      // ship collision
+      var sx = al.x - ship.x, sy = al.y - shipY;
+      if (ship.inv <= 0 && sx * sx + sy * sy < (al.r + 16 * S) * (al.r + 16 * S)) {
+        burst(al.x, al.y, al.c, 14); aliens.splice(a, 1); hurt();
+        if (!running) return; continue;
+      }
+      // got through
+      if (al.y - al.r > H) {
+        aliens.splice(a, 1); hurt();
+        if (!running) return;
+      }
+    }
+
+    for (var p = parts.length - 1; p >= 0; p--) {
+      var q = parts[p]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt;
+      if (q.t > q.life) parts.splice(p, 1);
+    }
+  }
+
+  function drawBackground(dt) {
+    ctx.fillStyle = '#0a0b24'; ctx.fillRect(0, 0, W, H);
+    var g = ctx.createRadialGradient(W * 0.7, H * 0.25, 10, W * 0.7, H * 0.25, H * 0.7);
+    g.addColorStop(0, 'rgba(94,70,200,.28)'); g.addColorStop(1, 'rgba(94,70,200,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#e8ecff';
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      s.y += s.z * 0.06 * dt * (running ? 1.6 : 0.6); if (s.y > 1.02) { s.y = -0.02; s.x = Math.random(); }
+      ctx.globalAlpha = 0.25 + s.z * 0.5;
+      ctx.fillRect(s.x * W, s.y * H, s.z * 2 * S, s.z * 2 * S);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawAlien(al) {
+    ctx.save(); ctx.translate(al.x, al.y);
+    var r = al.r, wob = Math.sin(clock * 8 + al.ph) * 0.12;
+    ctx.fillStyle = al.flash > 0 ? '#ffffff' : al.c;
+    // legs
+    ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 3 * S; ctx.lineCap = 'round';
+    for (var i = -2; i <= 2; i++) {
+      ctx.beginPath(); ctx.moveTo(i * r * 0.38, r * 0.3);
+      ctx.quadraticCurveTo(i * r * 0.5 + wob * r * 3, r * 0.9, i * r * 0.45 - wob * r * 2, r * 1.25); ctx.stroke();
+    }
+    // body
+    ctx.beginPath(); ctx.ellipse(0, 0, r, r * (0.85 + wob * 0.3), 0, 0, 6.283); ctx.fill();
+    if (al.type === 'big') {
+      ctx.fillStyle = 'rgba(0,0,0,.2)';
+      ctx.beginPath(); ctx.arc(-r * 0.5, -r * 0.1, r * 0.18, 0, 6.283); ctx.arc(r * 0.45, r * 0.3, r * 0.22, 0, 6.283); ctx.fill();
+    }
+    if (al.type === 'zig') {
+      ctx.strokeStyle = al.flash > 0 ? '#fff' : al.c; ctx.lineWidth = 2.5 * S;
+      ctx.beginPath(); ctx.moveTo(-r * 0.4, -r * 0.7); ctx.lineTo(-r * 0.7, -r * 1.3);
+      ctx.moveTo(r * 0.4, -r * 0.7); ctx.lineTo(r * 0.7, -r * 1.3); ctx.stroke();
+    }
+    // eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-r * 0.34, -r * 0.1, r * 0.26, 0, 6.283); ctx.arc(r * 0.34, -r * 0.1, r * 0.26, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#1a0f2e';
+    var look = (ship.x - al.x) / W * r * 0.12;
+    ctx.beginPath(); ctx.arc(-r * 0.34 + look, -r * 0.04, r * 0.12, 0, 6.283); ctx.arc(r * 0.34 + look, -r * 0.04, r * 0.12, 0, 6.283); ctx.fill();
+    ctx.restore();
+    // health bar for big
+    if (al.type === 'big' && al.hp < al.max) {
+      ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(al.x - r, al.y - r - 10 * S, r * 2, 4 * S);
+      ctx.fillStyle = '#ffb347'; ctx.fillRect(al.x - r, al.y - r - 10 * S, r * 2 * (al.hp / al.max), 4 * S);
+    }
+  }
+
+  function drawShip() {
+    if (ship.inv > 0 && Math.floor(ship.inv * 12) % 2 === 0) return;
+    var x = ship.x, y = H - 50 * S, k = S;
+    ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+    // flame
+    var fl = 10 + Math.random() * 8;
+    ctx.fillStyle = '#ff9d3c';
+    ctx.beginPath(); ctx.moveTo(-6, 14); ctx.lineTo(0, 14 + fl); ctx.lineTo(6, 14); ctx.closePath(); ctx.fill();
+    // wings
+    ctx.fillStyle = '#3aa8c4';
+    ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(-24, 18); ctx.lineTo(-8, 14); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(8, -2); ctx.lineTo(24, 18); ctx.lineTo(8, 14); ctx.closePath(); ctx.fill();
+    // body
+    ctx.fillStyle = '#5ee7ff';
+    ctx.beginPath(); ctx.moveTo(0, -24); ctx.quadraticCurveTo(12, -4, 9, 16); ctx.lineTo(-9, 16); ctx.quadraticCurveTo(-12, -4, 0, -24); ctx.fill();
+    // cockpit
+    ctx.fillStyle = '#12254d';
+    ctx.beginPath(); ctx.ellipse(0, -4, 4, 7, 0, 0, 6.283); ctx.fill();
+    ctx.restore();
+  }
+
+  function render(dt) {
+    drawBackground(dt);
+    ctx.fillStyle = '#fff27a';
+    ctx.shadowColor = '#fff27a'; ctx.shadowBlur = 8;
+    for (var i = 0; i < bullets.length; i++) ctx.fillRect(bullets[i].x - 2 * S, bullets[i].y - 8 * S, 4 * S, 14 * S);
+    ctx.shadowBlur = 0;
+    for (var a = 0; a < aliens.length; a++) drawAlien(aliens[a]);
+    if (running || lives > 0) drawShip();
+    for (var p = 0; p < parts.length; p++) {
+      var q = parts[p]; ctx.globalAlpha = 1 - q.t / q.life; ctx.fillStyle = q.c;
+      ctx.fillRect(q.x, q.y, 3 * S, 3 * S);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function loop(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (running) update(dt);
+    render(dt);
+    if (running) requestAnimationFrame(loop);
+  }
+
+  function pointerX(e) {
+    var r = cv.getBoundingClientRect();
+    ship.target = Math.max(18 * S, Math.min(W - 18 * S, e.clientX - r.left));
+  }
+  cv.addEventListener('pointerdown', pointerX);
+  cv.addEventListener('pointermove', pointerX);
+  window.addEventListener('keydown', function (e) { keys[e.key] = true; });
+  window.addEventListener('keyup', function (e) { keys[e.key] = false; });
+  startBtn.addEventListener('click', start);
+  muteBtn.addEventListener('click', function () {
+    muted = !muted;
+    muteBtn.textContent = muted ? '🔇' : '🔊';
+    try { localStorage.setItem('galaxy_muted', muted ? '1' : '0'); } catch (e) {}
+    if (!muted) { ensureAudio(); sfx.hit(); }
+  });
+
+  resize(); hearts();
+  last = performance.now(); render(0.016);
+})();
+</script>
+</body>
+  </html>
