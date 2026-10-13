@@ -16,12 +16,12 @@
   }
 
   // رسم الصورة على شرائح أفقية: الجسم ثابت والأطراف السفلية تتمايل كموجة
-  function drawWavy(img, sz, t, amp) {
+  function drawWavy(img, sz, t, amp, speed, start) {
     var strips = 32, sh = img.naturalHeight / strips, dh = sz / strips;
     for (var i = 0; i < strips; i++) {
-      var f = (i / strips - 0.46) / 0.54;            // 0 عند الجسم، 1 عند أطراف الأرجل
+      var f = (i / strips - start) / (1 - start);    // 0 عند الجسم، 1 عند أطراف الأرجل
       f = f < 0 ? 0 : f;
-      var off = Math.sin(t * 5.5 - i * 0.45) * amp * f * f;
+      var off = Math.sin(t * speed - i * 0.45) * amp * f * f;
       ctx.drawImage(img, 0, i * sh, img.naturalWidth, sh + 0.5,
                     -sz / 2 + off, -sz / 2 + i * dh, sz, dh + 0.6);
     }
@@ -34,7 +34,6 @@
     var t = clock + al.ph;
     if (al.born === undefined) al.born = clock;
     var age = clock - al.born;
-    var wavy = (al.type === 'small' || al.type === 'big');  // الأخضر: أطراف متحركة
     var dk = 0;                                             // شدة التفادي (للبرتقالي)
 
     // ---- حركة حيّة لكل نوع ----
@@ -51,6 +50,11 @@
       sy = 1 - 0.045 * Math.sin(t * 2.6);
       rot = 0.05 * Math.sin(t * 1.4);
       bob = 4 * S * Math.sin(t * 2);
+    } else if (al.type === 'big') {     // الأزرق المتوسط: ثقيل وهادئ (الأطراف تتحرك بالشرائح)
+      sx = 1 + 0.04 * Math.sin(t * 4);
+      sy = 1 - 0.04 * Math.sin(t * 4);
+      rot = 0.06 * Math.sin(t * 2.2);
+      bob = 3 * S * Math.sin(t * 3.5);
     } else {                            // الأخضر: نبض خفيف وطفو (الأطراف تتحرك بالشرائح)
       sx = 1 + 0.05 * Math.sin(t * 6);
       sy = 1 - 0.05 * Math.sin(t * 6);
@@ -80,7 +84,8 @@
     }
 
     function paint() {
-      if (wavy) drawWavy(img, sz, t, sz * 0.1);
+      if (al.type === 'small') drawWavy(img, sz, t, sz * 0.1, 5.5, 0.46);       // الأخضر: أطراف تتمايل
+      else if (al.type === 'big') drawWavy(img, sz, t, sz * 0.055, 4, 0.5);     // الأزرق: مخالب تتحرك بهدوء
       else ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
     }
 
