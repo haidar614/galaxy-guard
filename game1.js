@@ -274,4 +274,5 @@
       var q = parts[p]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt;
       if (q.t > q.life) parts.splice(p, 1);
     }
-  }
+      }
+       
