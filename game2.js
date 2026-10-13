@@ -19,13 +19,55 @@
     var img = alienImgs[al.type];
     if (!imgReady(img)) { drawAlienVector(al); return; }   // احتياط: الرسم القديم
     var r = al.r, sz = r * 3.2;
-    ctx.save(); ctx.translate(al.x, al.y);
+    var t = clock + al.ph;
+    if (al.born === undefined) al.born = clock;
+    var age = clock - al.born;
+
+    // ---- حركة حيّة لكل نوع: تمدّد وانضغاط + تمايل + طفو ----
+    var sx, sy, rot, bob;
+    if (al.type === 'zig') {            // البرتقالي: رفرفة سريعة وانحناء مع حركته
+      sx = 1 + 0.12 * Math.sin(t * 14);
+      sy = 1 - 0.06 * Math.sin(t * 14);
+      rot = 0.4 * Math.cos(clock * 3 + al.ph);
+      bob = 2 * S * Math.sin(t * 9);
+    } else if (al.type === 'boss') {    // الزعيم: تنفّس بطيء وثقيل
+      sx = 1 + 0.045 * Math.sin(t * 2.6);
+      sy = 1 - 0.045 * Math.sin(t * 2.6);
+      rot = 0.05 * Math.sin(t * 1.4);
+      bob = 4 * S * Math.sin(t * 2);
+    } else {                            // الأخضر: نبض وتمايل
+      sx = 1 + 0.08 * Math.sin(t * 6);
+      sy = 1 - 0.08 * Math.sin(t * 6);
+      rot = 0.14 * Math.sin(t * 3);
+      bob = 3 * S * Math.sin(t * 5);
+    }
+    // ظهور مفاجئ (بوب) في أول 0.35 ثانية
+    if (age < 0.35) {
+      var k = age / 0.35;
+      var pop = 0.5 + 0.5 * (1 - Math.pow(1 - k, 3));
+      sx *= pop; sy *= pop;
+    }
+    // ارتداد واهتزاز عند الإصابة
+    var shakeX = 0;
+    if (al.flash > 0) { sx *= 1.12; sy *= 0.9; shakeX = (Math.random() - 0.5) * 4 * S; }
+
+    ctx.save();
+    ctx.translate(al.x + shakeX, al.y + bob);
+    ctx.rotate(rot);
+    ctx.scale(sx, sy);
+    if (al.type === 'boss') {           // هالة بنفسجية نابضة حول الزعيم
+      ctx.shadowColor = 'rgba(189,117,255,.9)';
+      ctx.shadowBlur = 16 + 8 * Math.sin(t * 3);
+    }
     ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
-    if (al.flash > 0) {                                     // وميض عند الإصابة
-      ctx.globalAlpha = 0.45; ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.95, 0, 6.283); ctx.fill();
+    if (al.flash > 0) {                 // وميض ساطع على شكل الوحش فقط
+      ctx.shadowBlur = 0;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.6;
+      ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
     }
     ctx.restore();
+
     if ((al.type === 'big' || al.type === 'boss') && al.hp < al.max) {
       var barW = al.type === 'boss' ? r * 2.4 : r * 2;
       var barX = al.x - barW / 2;
@@ -240,3 +282,4 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
+    
