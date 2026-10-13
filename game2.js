@@ -15,6 +15,18 @@
     ctx.globalAlpha = 1;
   }
 
+  // رسم الصورة على شرائح أفقية: الجسم ثابت والأطراف السفلية تتمايل كموجة
+  function drawWavy(img, sz, t, amp) {
+    var strips = 32, sh = img.naturalHeight / strips, dh = sz / strips;
+    for (var i = 0; i < strips; i++) {
+      var f = (i / strips - 0.46) / 0.54;            // 0 عند الجسم، 1 عند أطراف الأرجل
+      f = f < 0 ? 0 : f;
+      var off = Math.sin(t * 5.5 - i * 0.45) * amp * f * f;
+      ctx.drawImage(img, 0, i * sh, img.naturalWidth, sh + 0.5,
+                    -sz / 2 + off, -sz / 2 + i * dh, sz, dh + 0.6);
+    }
+  }
+
   function drawAlien(al) {
     var img = alienImgs[al.type];
     if (!imgReady(img)) { drawAlienVector(al); return; }   // احتياط: الرسم القديم
@@ -22,23 +34,27 @@
     var t = clock + al.ph;
     if (al.born === undefined) al.born = clock;
     var age = clock - al.born;
+    var wavy = (al.type === 'small' || al.type === 'big');  // الأخضر: أطراف متحركة
+    var dk = 0;                                             // شدة التفادي (للبرتقالي)
 
-    // ---- حركة حيّة لكل نوع: تمدّد وانضغاط + تمايل + طفو ----
+    // ---- حركة حيّة لكل نوع ----
     var sx, sy, rot, bob;
-    if (al.type === 'zig') {            // البرتقالي: رفرفة سريعة وانحناء مع حركته
-      sx = 1 + 0.12 * Math.sin(t * 14);
-      sy = 1 - 0.06 * Math.sin(t * 14);
-      rot = 0.4 * Math.cos(clock * 3 + al.ph);
+    if (al.type === 'zig') {            // البرتقالي: يلتفت نحو مركبتك ويتفادى الطلقات
+      dk = al.dodgeT > 0 ? al.dodgeT / 0.35 : 0;
+      var look = Math.max(-1, Math.min(1, (ship.x - al.x) / (W * 0.45)));
+      sx = 1 + 0.12 * Math.sin(t * 14) + 0.15 * dk;
+      sy = 1 - 0.06 * Math.sin(t * 14) - 0.08 * dk;
+      rot = 0.28 * Math.cos(clock * 3 + al.ph) + 0.3 * look + (al.dodgeDir || 0) * 0.55 * dk;
       bob = 2 * S * Math.sin(t * 9);
     } else if (al.type === 'boss') {    // الزعيم: تنفّس بطيء وثقيل
       sx = 1 + 0.045 * Math.sin(t * 2.6);
       sy = 1 - 0.045 * Math.sin(t * 2.6);
       rot = 0.05 * Math.sin(t * 1.4);
       bob = 4 * S * Math.sin(t * 2);
-    } else {                            // الأخضر: نبض وتمايل
-      sx = 1 + 0.08 * Math.sin(t * 6);
-      sy = 1 - 0.08 * Math.sin(t * 6);
-      rot = 0.14 * Math.sin(t * 3);
+    } else {                            // الأخضر: نبض خفيف وطفو (الأطراف تتحرك بالشرائح)
+      sx = 1 + 0.05 * Math.sin(t * 6);
+      sy = 1 - 0.05 * Math.sin(t * 6);
+      rot = 0.08 * Math.sin(t * 3);
       bob = 3 * S * Math.sin(t * 5);
     }
     // ظهور مفاجئ (بوب) في أول 0.35 ثانية
@@ -51,6 +67,23 @@
     var shakeX = 0;
     if (al.flash > 0) { sx *= 1.12; sy *= 0.9; shakeX = (Math.random() - 0.5) * 4 * S; }
 
+    // ظلال متأخرة خلف البرتقالي أثناء التفادي
+    if (dk > 0) {
+      for (var gI = 1; gI <= 2; gI++) {
+        ctx.save();
+        ctx.globalAlpha = 0.3 * dk / gI;
+        ctx.translate(al.x - (al.dodgeDir || 0) * gI * 16 * S * dk, al.y + bob);
+        ctx.rotate(rot); ctx.scale(sx, sy);
+        ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
+        ctx.restore();
+      }
+    }
+
+    function paint() {
+      if (wavy) drawWavy(img, sz, t, sz * 0.1);
+      else ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
+    }
+
     ctx.save();
     ctx.translate(al.x + shakeX, al.y + bob);
     ctx.rotate(rot);
@@ -59,12 +92,12 @@
       ctx.shadowColor = 'rgba(189,117,255,.9)';
       ctx.shadowBlur = 16 + 8 * Math.sin(t * 3);
     }
-    ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
+    paint();
     if (al.flash > 0) {                 // وميض ساطع على شكل الوحش فقط
       ctx.shadowBlur = 0;
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.6;
-      ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
+      paint();
     }
     ctx.restore();
 
@@ -282,4 +315,4 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
-    
+        
