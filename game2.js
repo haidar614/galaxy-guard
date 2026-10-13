@@ -198,6 +198,83 @@
     ctx.restore();
   }
 
+  // ---------- رسم المكافآت والدرع ----------
+  var POWER_COLORS = { shield: '#5ee7ff', multi: '#fff27a', heart: '#ff5c7a' };
+
+  function drawPowerIcon(kind, s) {        // أيقونات مرسومة بالكود حول (0,0)
+    ctx.fillStyle = POWER_COLORS[kind];
+    ctx.strokeStyle = POWER_COLORS[kind];
+    if (kind === 'shield') {
+      ctx.beginPath();
+      ctx.moveTo(0, -8 * s); ctx.lineTo(7 * s, -5 * s); ctx.lineTo(6 * s, 3 * s);
+      ctx.lineTo(0, 9 * s); ctx.lineTo(-6 * s, 3 * s); ctx.lineTo(-7 * s, -5 * s);
+      ctx.closePath(); ctx.fill();
+    } else if (kind === 'multi') {
+      ctx.lineWidth = 2.4 * s; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-7 * s, 7 * s); ctx.lineTo(-9 * s, -3 * s);
+      ctx.moveTo(0, 8 * s); ctx.lineTo(0, -8 * s);
+      ctx.moveTo(7 * s, 7 * s); ctx.lineTo(9 * s, -3 * s);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(0, 8 * s);
+      ctx.bezierCurveTo(-12 * s, -1 * s, -7 * s, -10 * s, 0, -4 * s);
+      ctx.bezierCurveTo(7 * s, -10 * s, 12 * s, -1 * s, 0, 8 * s);
+      ctx.fill();
+    }
+  }
+
+  function drawDrops() {
+    for (var i = 0; i < drops.length; i++) {
+      var d = drops[i];
+      var pulse = 1 + 0.1 * Math.sin(clock * 6 + d.ph);
+      var c = POWER_COLORS[d.kind];
+      ctx.save();
+      ctx.translate(d.x + Math.sin(clock * 3 + d.ph) * 4 * S, d.y);
+      ctx.shadowColor = c; ctx.shadowBlur = 14;
+      ctx.fillStyle = 'rgba(10,11,36,.85)';
+      ctx.strokeStyle = c; ctx.lineWidth = 2 * S;
+      ctx.beginPath(); ctx.arc(0, 0, 15 * S * pulse, 0, 6.283); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0;
+      drawPowerIcon(d.kind, S);
+      ctx.restore();
+    }
+  }
+
+  function drawShield() {
+    if (!(ship.shield > 0)) return;
+    if (ship.shield < 2 && Math.floor(clock * 10) % 2 === 0) return;   // يومض قبل أن ينتهي
+    var cx = ship.x, cy = H - 52 * S, rr = 40 * S;
+    ctx.save();
+    ctx.shadowColor = '#5ee7ff'; ctx.shadowBlur = 12;
+    ctx.fillStyle = 'rgba(94,231,255,.10)';
+    ctx.strokeStyle = 'rgba(94,231,255,.75)'; ctx.lineWidth = 2 * S;
+    ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 6.283); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.setLineDash([10 * S, 12 * S]); ctx.lineDashOffset = -clock * 50;
+    ctx.strokeStyle = 'rgba(255,255,255,.6)';
+    ctx.beginPath(); ctx.arc(cx, cy, rr - 4 * S, 0, 6.283); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPowerHUD() {              // مؤشرات الوقت المتبقي أسفل اليسار
+    var items = [];
+    if (ship.shield > 0) items.push(['shield', ship.shield / SHIELD_TIME]);
+    if (ship.multi > 0) items.push(['multi', ship.multi / MULTI_TIME]);
+    for (var i = 0; i < items.length; i++) {
+      var x = 22 * S, y = H - 20 * S - i * 28 * S;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(10,11,36,.7)';
+      ctx.beginPath(); ctx.arc(0, 0, 12 * S, 0, 6.283); ctx.fill();
+      drawPowerIcon(items[i][0], S * 0.75);
+      ctx.fillStyle = 'rgba(255,255,255,.2)'; ctx.fillRect(18 * S, -3 * S, 60 * S, 6 * S);
+      ctx.fillStyle = POWER_COLORS[items[i][0]]; ctx.fillRect(18 * S, -3 * S, 60 * S * Math.max(0, items[i][1]), 6 * S);
+      ctx.restore();
+    }
+  }
+
   function render(dt) {
     drawBackground(dt);
     ctx.fillStyle = '#fff27a';
@@ -211,12 +288,15 @@
       ctx.beginPath(); ctx.arc(ebullets[ei].x, ebullets[ei].y, 6 * S, 0, 6.283); ctx.fill();
     }
     ctx.shadowBlur = 0;
+    drawDrops();
     if (running || lives > 0) drawShip();
+    drawShield();
     for (var p = 0; p < parts.length; p++) {
       var q = parts[p]; ctx.globalAlpha = 1 - q.t / q.life; ctx.fillStyle = q.c;
       ctx.fillRect(q.x, q.y, 3 * S, 3 * S);
     }
     ctx.globalAlpha = 1;
+    drawPowerHUD();
   }
 
   function loop(now) {
@@ -320,4 +400,4 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
-        
+    
