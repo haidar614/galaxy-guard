@@ -18,7 +18,7 @@
   var alienImgs = {
     small: loadImg('1000555846.png'),                      // الأخضر
     zig:   loadImg('1000555848.png'),                      // البرتقالي
-    big:   loadImg('1000555846.png'),                      // الأخضر (كبير)
+    big:   loadImg('1000555877.png'),                      // الأزرق (متوسط)
     boss:  loadImg('1000555851.png')                       // البنفسجي: زعيم المجرّة
   };
 
@@ -164,7 +164,7 @@
     var d = {
       small: { r: 20, hp: 1, v: 85, c: '#7cfc9a', pts: 1 },
       zig:   { r: 19, hp: 1, v: 105, c: '#ff7ad9', pts: 2 },
-      big:   { r: 34, hp: 4 + tier * 2, v: 55, c: '#ffb347', pts: 5 }
+      big:   { r: 28, hp: 4 + tier * 2, v: 55, c: '#ffb347', pts: 5 }
     }[type];
     var rad = d.r * S;
     var difficultySpeed = Math.min(2.2, Math.pow(1.15, tier));
@@ -295,5 +295,5 @@
       var q = parts[p]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt;
       if (q.t > q.life) parts.splice(p, 1);
     }
-      }
-    
+}
+      
