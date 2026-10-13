@@ -7,7 +7,8 @@
 
   var running = false, paused = false, quitArmed = false, score = 0, lives = 3, spawnT = 0, fireT = 0, last = 0, clock = 0;
   var level = 1;
-  var aliens = [], bullets = [], parts = [], stars = [], ebullets = [];
+  var aliens = [], bullets = [], parts = [], stars = [], ebullets = [], drops = [];
+  var SHIELD_TIME = 8, MULTI_TIME = 10;   // مدة الدرع والطلقات الإضافية بالثواني
   var ship = { x: 0, target: 0, inv: 0 };
   var keys = {};
 
@@ -95,13 +96,13 @@
 
   function reset() {
     score = 0; lives = 3; level = 1;
-    aliens = []; bullets = []; parts = []; ebullets = [];
+    aliens = []; bullets = []; parts = []; ebullets = []; drops = [];
     spawnT = 0.5; fireT = 0; clock = 0;
     scoreEl.textContent = '0';
     levelEl.textContent = 'LEVEL 1';
     levelToast.classList.remove('show');
     hearts();
-    ship.x = ship.target = W / 2; ship.inv = 0;
+    ship.x = ship.target = W / 2; ship.inv = 0; ship.shield = 0; ship.multi = 0;
   }
 
   function start() {
@@ -149,7 +150,51 @@
     }
   }
 
+  // ---------- المكافآت: تسقط أحيانًا عند قتل الوحوش ----------
+  function powerToast(text) {
+    levelToast.textContent = text;
+    levelToast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { levelToast.classList.remove('show'); }, 900);
+  }
+
+  function maybeDrop(al) {
+    var chance = { small: 0.07, zig: 0.10, big: 0.22, boss: 1 }[al.type] || 0.07;
+    var n = al.type === 'boss' ? 2 : 1;
+    for (var i = 0; i < n; i++) {
+      if (Math.random() < chance && drops.length < 3) {
+        var rnd = Math.random();
+        var kind = rnd < 0.38 ? 'shield' : (rnd < 0.8 ? 'multi' : 'heart');
+        if (kind === 'heart' && lives >= 3) kind = 'shield';   // القلب يظهر فقط إذا خسرت قلبًا
+        drops.push({ kind: kind, x: al.x + (i - 0.5 * (n - 1)) * 44 * S, y: al.y, ph: Math.random() * 6 });
+      }
+    }
+  }
+
+  function collectDrop(dp) {
+    var colors = { shield: '#5ee7ff', multi: '#fff27a', heart: '#ff5c7a' };
+    burst(dp.x, dp.y, colors[dp.kind], 14);
+    if (dp.kind === 'shield') {
+      ship.shield = SHIELD_TIME;
+      powerToast('درع!');
+      tone(520, 880, 0.18, 'sine', 0.06); tone(880, 1320, 0.18, 'sine', 0.05, 0.1);
+    } else if (dp.kind === 'multi') {
+      ship.multi = MULTI_TIME;
+      powerToast('طلقات إضافية!');
+      tone(440, 880, 0.12, 'square', 0.04); tone(660, 1320, 0.16, 'square', 0.04, 0.1);
+    } else {
+      if (lives < 3) { lives++; hearts(); powerToast('قلب إضافي!'); }
+      else { score += 5; scoreEl.textContent = score; checkLevel(); powerToast('+5'); }
+      tone(660, 990, 0.2, 'triangle', 0.06); tone(990, 1320, 0.2, 'triangle', 0.05, 0.12);
+    }
+  }
+
   function hurt() {
+    if (ship.shield > 0) {                 // الدرع يمتص الضربة
+      tone(700, 300, 0.12, 'triangle', 0.06);
+      burst(ship.x, H - 50 * S, '#5ee7ff', 10);
+      return;
+    }
     lives--; hearts();
     ship.inv = 1.4;
     sfx.hurt();
@@ -181,8 +226,10 @@
     sfx.shoot();
     var fireLevel = Math.min(2, Math.floor(score / 30));
     var offs = fireLevel === 0 ? [0] : fireLevel === 1 ? [-9, 9] : [-14, 0, 14];
+    var vxs = null;
+    if (ship.multi > 0) { offs = [-18, -9, 0, 9, 18]; vxs = [-70, -35, 0, 35, 70]; }   // مكافأة الطلقات الإضافية
     for (var i = 0; i < offs.length; i++) {
-      bullets.push({ x: ship.x + offs[i] * S, y: H - 66 * S, v: 560 * S });
+      bullets.push({ x: ship.x + offs[i] * S, y: H - 66 * S, v: 560 * S, vx: vxs ? vxs[i] * S : 0 });
     }
   }
 
@@ -208,7 +255,8 @@
 
     for (var i = bullets.length - 1; i >= 0; i--) {
       bullets[i].y -= bullets[i].v * dt;
-      if (bullets[i].y < -10) bullets.splice(i, 1);
+      bullets[i].x += (bullets[i].vx || 0) * dt;
+      if (bullets[i].y < -10 || bullets[i].x < -10 || bullets[i].x > W + 10) bullets.splice(i, 1);
     }
 
     var shipY = H - 50 * S;
@@ -264,6 +312,7 @@
         checkLevel();
         sfx.boom(al.type === 'big' || al.type === 'boss', al.type === 'boss');
         burst(al.x, al.y, al.c, 16);
+        maybeDrop(al);
         aliens.splice(a, 1); continue;
       }
       // اصطدام العدو بالمركبة
@@ -291,9 +340,22 @@
       if (eb.y > H + 20 || eb.x < -20 || eb.x > W + 20) ebullets.splice(ei, 1);
     }
 
+    // سقوط المكافآت وجمعها
+    if (ship.shield > 0) ship.shield -= dt;
+    if (ship.multi > 0) ship.multi -= dt;
+    for (var di = drops.length - 1; di >= 0; di--) {
+      var dp = drops[di];
+      dp.y += 95 * S * dt;
+      var ddx = dp.x - ship.x, ddy = dp.y - shipY;
+      if (ddx * ddx + ddy * ddy < (34 * S) * (34 * S)) {
+        collectDrop(dp); drops.splice(di, 1); continue;
+      }
+      if (dp.y > H + 30) drops.splice(di, 1);
+    }
+
     for (var p = parts.length - 1; p >= 0; p--) {
       var q = parts[p]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt;
       if (q.t > q.life) parts.splice(p, 1);
     }
-}
-      
+        }
+                          
