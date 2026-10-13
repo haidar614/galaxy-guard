@@ -215,7 +215,28 @@
     for (var a = aliens.length - 1; a >= 0; a--) {
       var al = aliens[a];
       al.y += al.v * dt;
-      if (al.type === 'zig') al.x = al.x0 + Math.sin(clock * 3 + al.ph) * 34 * S;
+      if (al.type === 'zig') {
+        // البرتقالي الرشيق: يتفادى الطلقات القادمة نحوه
+        if (al.dodgeCool > 0) al.dodgeCool -= dt;
+        if (al.dodgeT > 0) al.dodgeT -= dt;
+        if (al.tx === undefined) al.tx = al.x0;
+        if (!(al.dodgeCool > 0)) {
+          for (var db = 0; db < bullets.length; db++) {
+            var bdx = bullets[db].x - al.x, bdy = bullets[db].y - al.y;
+            if (bdy > 0 && bdy < 170 * S && Math.abs(bdx) < al.r * 1.05) {
+              var dir = bdx > 0 ? -1 : (bdx < 0 ? 1 : (Math.random() < 0.5 ? -1 : 1));
+              var lo = al.r + 34 * S, hi = W - al.r - 34 * S;
+              var nt = al.tx + dir * 58 * S;
+              if (nt < lo || nt > hi) { dir = -dir; nt = al.tx + dir * 58 * S; }
+              al.tx = Math.max(lo, Math.min(hi, nt));
+              al.dodgeDir = dir; al.dodgeT = 0.35; al.dodgeCool = 1.1;
+              break;
+            }
+          }
+        }
+        al.x0 += (al.tx - al.x0) * Math.min(1, dt * 9);
+        al.x = al.x0 + Math.sin(clock * 3 + al.ph) * 34 * S;
+      }
       if (al.flash > 0) al.flash -= dt;
 
       // الزعيم يطلق كرات نارية نحو المركبة
@@ -275,4 +296,4 @@
       if (q.t > q.life) parts.splice(p, 1);
     }
       }
-       
+    
