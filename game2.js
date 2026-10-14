@@ -116,65 +116,86 @@
     }
   }
 
-  function drawAlienVector(al) {
+  function drawAlienVector(al) {          // احتياط بسيط إذا لم تُحمَّل صورة الوحش
     ctx.save(); ctx.translate(al.x, al.y);
-    var r = al.r, wob = Math.sin(clock * 8 + al.ph) * 0.12;
     ctx.fillStyle = al.flash > 0 ? '#ffffff' : al.c;
-    // الأرجل
-    ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 3 * S; ctx.lineCap = 'round';
-    for (var i = -2; i <= 2; i++) {
-      ctx.beginPath(); ctx.moveTo(i * r * 0.38, r * 0.3);
-      ctx.quadraticCurveTo(i * r * 0.5 + wob * r * 3, r * 0.9, i * r * 0.45 - wob * r * 2, r * 1.25); ctx.stroke();
-    }
-    // الجسم
-    ctx.beginPath(); ctx.ellipse(0, 0, r, r * (0.85 + wob * 0.3), 0, 0, 6.283); ctx.fill();
-    if (al.type === 'big') {
-      ctx.fillStyle = 'rgba(0,0,0,.2)';
-      ctx.beginPath(); ctx.arc(-r * 0.5, -r * 0.1, r * 0.18, 0, 6.283); ctx.arc(r * 0.45, r * 0.3, r * 0.22, 0, 6.283); ctx.fill();
-    }
-    if (al.type === 'boss') {
-      // هالة وحواف مميزة لزعيم المجرّة.
-      ctx.strokeStyle = al.flash > 0 ? '#ffffff' : '#f2c7ff';
-      ctx.lineWidth = 3 * S;
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.22, r * 1.08, clock * 0.35, 0, 6.283); ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.55, -r * 0.62);
-      ctx.lineTo(-r * 0.42, -r * 1.18);
-      ctx.lineTo(-r * 0.12, -r * 0.72);
-      ctx.lineTo(0, -r * 1.3);
-      ctx.lineTo(r * 0.18, -r * 0.72);
-      ctx.lineTo(r * 0.48, -r * 1.15);
-      ctx.lineTo(r * 0.58, -r * 0.58);
-      ctx.stroke();
-    }
-    if (al.type === 'zig') {
-      ctx.strokeStyle = al.flash > 0 ? '#fff' : al.c; ctx.lineWidth = 2.5 * S;
-      ctx.beginPath(); ctx.moveTo(-r * 0.4, -r * 0.7); ctx.lineTo(-r * 0.7, -r * 1.3);
-      ctx.moveTo(r * 0.4, -r * 0.7); ctx.lineTo(r * 0.7, -r * 1.3); ctx.stroke();
-    }
-    // العيون
+    ctx.beginPath(); ctx.ellipse(0, 0, al.r, al.r * 0.85, 0, 0, 6.283); ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(-r * 0.34, -r * 0.1, r * 0.26, 0, 6.283); ctx.arc(r * 0.34, -r * 0.1, r * 0.26, 0, 6.283); ctx.fill();
-    ctx.fillStyle = '#1a0f2e';
-    var look = (ship.x - al.x) / W * r * 0.12;
-    ctx.beginPath(); ctx.arc(-r * 0.34 + look, -r * 0.04, r * 0.12, 0, 6.283); ctx.arc(r * 0.34 + look, -r * 0.04, r * 0.12, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(-al.r * 0.34, -al.r * 0.1, al.r * 0.26, 0, 6.283); ctx.arc(al.r * 0.34, -al.r * 0.1, al.r * 0.26, 0, 6.283); ctx.fill();
     ctx.restore();
-    // شريط صحة العدو الكبير
-    if ((al.type === 'big' || al.type === 'boss') && al.hp < al.max) {
-      var barW = al.type === 'boss' ? r * 2.4 : r * 2;
-      var barX = al.x - barW / 2;
-      var barY = al.y - r - (al.type === 'boss' ? 16 : 10) * S;
-      ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(barX, barY, barW, 4 * S);
-      ctx.fillStyle = al.type === 'boss' ? '#bd75ff' : '#ffb347';
-      ctx.fillRect(barX, barY, barW * (al.hp / al.max), 4 * S);
+  }
+
+  // الطلقة العادية صفراء: نبدّل قناتي الأحمر والأزرق في نسخة من صورة الطلقة (مرة واحدة)
+  var yellowBullet = null;
+  function yellowBulletSprite() {
+    if (yellowBullet) return yellowBullet;
+    if (!imgReady(powerBulletImg)) return null;
+    try {
+      var c = document.createElement('canvas');
+      c.width = powerBulletImg.naturalWidth; c.height = powerBulletImg.naturalHeight;
+      var cx = c.getContext('2d');
+      cx.drawImage(powerBulletImg, 0, 0);
+      var im = cx.getImageData(0, 0, c.width, c.height), px = im.data;
+      for (var i = 0; i < px.length; i += 4) { var t = px[i]; px[i] = px[i + 2]; px[i + 2] = t; }
+      cx.putImageData(im, 0, 0);
+      yellowBullet = c;
+    } catch (e) { yellowBullet = null; }
+    return yellowBullet;
+  }
+
+  // ألسنة اللهب (كنسب من الصورة): تُقصّ من الصورة ثم تُرسم متمددة وخافقة
+  var FLAME_TOP = 0.775;
+  var FLAME_BANDS = [[0.25, 0.405], [0.405, 0.595], [0.595, 0.75]];
+
+  function drawShipSprite(img, x, y, sz) {
+    var iw = img.naturalWidth, ih = img.naturalHeight, fy = FLAME_TOP, b;
+    ctx.save();                                      // 1) الجسم بدون ألسنة اللهب
+    ctx.beginPath();
+    ctx.rect(x - sz, y - sz, sz * 3, sz * 3);
+    for (b = 0; b < 3; b++) {
+      ctx.rect(x + FLAME_BANDS[b][0] * sz, y + fy * sz, (FLAME_BANDS[b][1] - FLAME_BANDS[b][0]) * sz, sz * 0.5);
     }
+    ctx.clip('evenodd');
+    ctx.drawImage(img, x, y, sz, sz);
+    ctx.restore();
+    for (b = 0; b < 3; b++) {                        // 2) كل لسان يخفق بإيقاعه
+      var b0 = FLAME_BANDS[b][0], b1 = FLAME_BANDS[b][1], ph = b * 2.1;
+      var k = 1 + 0.16 * Math.sin(clock * 24 + ph) + 0.07 * Math.sin(clock * 41 + ph * 1.7);
+      var w = 1 + 0.05 * Math.sin(clock * 31 + ph);
+      var dw = (b1 - b0) * sz, dh = (1 - fy) * sz * k;
+      ctx.globalAlpha = 0.9 + 0.1 * Math.sin(clock * 37 + ph);
+      ctx.drawImage(img, b0 * iw, fy * ih, (b1 - b0) * iw, ih - fy * ih,
+                    x + b0 * sz + (dw - dw * w) / 2, y + fy * sz, dw * w, dh);
+    }
+    ctx.globalAlpha = 1;
   }
 
   function drawShip() {
-    if (!imgReady(shipImg)) { drawShipVector(); return; }  // احتياط: الرسم القديم
+    var strong = ship.power > 0 && !(ship.power < 2 && Math.floor(clock * 10) % 2 === 0);   // يومض قبل انتهاء المفعول
+    var own = strong && imgReady(powerShipImg);                 // هل توجد صورة للمركبة القوية؟
+    var img = own ? powerShipImg : shipImg;
+    if (!imgReady(img)) { drawShipVector(); return; }           // احتياط: الرسم القديم
     if (ship.inv > 0 && Math.floor(ship.inv * 12) % 2 === 0) return;
-    var sz = 60 * S;
-    ctx.drawImage(shipImg, ship.x - sz / 2, H - 50 * S - sz * 0.55, sz, sz);
+    var sz = (strong ? 70 : 60) * S;
+    var x = ship.x - sz / 2, y = H - 50 * S - sz * 0.55;
+    ctx.save();
+    if (strong && !own) {                                       // مؤقتًا: هالة ذهبية بدل صورة المركبة القوية
+      ctx.shadowColor = '#ffd166';
+      ctx.shadowBlur = 16 + 6 * Math.sin(clock * 8);
+    }
+    drawShipSprite(img, x, y, sz);
+    if (ship.flash > 0) {                                       // وميض وحلقة عند الالتقاط
+      var k = Math.min(1, ship.flash / 0.6);
+      ctx.shadowBlur = 0;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.8 * k;
+      ctx.drawImage(img, x, y, sz, sz);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = k;
+      ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 3 * S;
+      ctx.beginPath(); ctx.arc(ship.x, H - 52 * S, (1 - k) * 70 * S + 20 * S, 0, 6.283); ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function drawShipVector() {
@@ -199,7 +220,7 @@
   }
 
   // ---------- رسم المكافآت والدرع ----------
-  var POWER_COLORS = { shield: '#5ee7ff', multi: '#fff27a', heart: '#ff5c7a' };
+  var POWER_COLORS = { shield: '#5ee7ff', multi: '#fff27a', heart: '#ff5c7a', power: '#ffd166' };
 
   function drawPowerIcon(kind, s) {        // أيقونات مرسومة بالكود حول (0,0)
     ctx.fillStyle = POWER_COLORS[kind];
@@ -216,6 +237,11 @@
       ctx.moveTo(0, 8 * s); ctx.lineTo(0, -8 * s);
       ctx.moveTo(7 * s, 7 * s); ctx.lineTo(9 * s, -3 * s);
       ctx.stroke();
+    } else if (kind === 'power') {        // مركبة صغيرة = المركبة القوية
+      ctx.beginPath();
+      ctx.moveTo(0, -9 * s); ctx.lineTo(3 * s, -2 * s); ctx.lineTo(9 * s, 6 * s); ctx.lineTo(3.5 * s, 4 * s);
+      ctx.lineTo(0, 8 * s); ctx.lineTo(-3.5 * s, 4 * s); ctx.lineTo(-9 * s, 6 * s); ctx.lineTo(-3 * s, -2 * s);
+      ctx.closePath(); ctx.fill();
     } else {
       ctx.beginPath();
       ctx.moveTo(0, 8 * s);
@@ -235,9 +261,9 @@
       ctx.shadowColor = c; ctx.shadowBlur = 14;
       ctx.fillStyle = 'rgba(10,11,36,.85)';
       ctx.strokeStyle = c; ctx.lineWidth = 2 * S;
-      ctx.beginPath(); ctx.arc(0, 0, 15 * S * pulse, 0, 6.283); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, 12 * S * pulse, 0, 6.283); ctx.fill(); ctx.stroke();
       ctx.shadowBlur = 0;
-      drawPowerIcon(d.kind, S);
+      drawPowerIcon(d.kind, S * 0.8);
       ctx.restore();
     }
   }
@@ -245,7 +271,7 @@
   function drawShield() {
     if (!(ship.shield > 0)) return;
     if (ship.shield < 2 && Math.floor(clock * 10) % 2 === 0) return;   // يومض قبل أن ينتهي
-    var cx = ship.x, cy = H - 52 * S, rr = 40 * S;
+    var cx = ship.x, cy = H - 52 * S, rr = 34 * S;
     ctx.save();
     ctx.shadowColor = '#5ee7ff'; ctx.shadowBlur = 12;
     ctx.fillStyle = 'rgba(94,231,255,.10)';
@@ -262,6 +288,7 @@
     var items = [];
     if (ship.shield > 0) items.push(['shield', ship.shield / SHIELD_TIME]);
     if (ship.multi > 0) items.push(['multi', ship.multi / MULTI_TIME]);
+    if (ship.power > 0) items.push(['power', ship.power / POWER_TIME]);
     for (var i = 0; i < items.length; i++) {
       var x = 22 * S, y = H - 20 * S - i * 28 * S;
       ctx.save();
@@ -279,7 +306,30 @@
     drawBackground(dt);
     ctx.fillStyle = '#fff27a';
     ctx.shadowColor = '#fff27a'; ctx.shadowBlur = 8;
-    for (var i = 0; i < bullets.length; i++) ctx.fillRect(bullets[i].x - 2 * S, bullets[i].y - 8 * S, 4 * S, 14 * S);
+    for (var i = 0; i < bullets.length; i++) {
+      var bl = bullets[i];
+      if (bl.dmg > 1) {                       // طلقات المركبة القوية: شكلها الأزرق المتوهج
+        if (imgReady(powerBulletImg)) {
+          ctx.save();
+          ctx.shadowBlur = 0;
+          ctx.translate(bl.x, bl.y);
+          ctx.rotate(Math.atan2(bl.vx || 0, bl.v));      // تميل مع اتجاه الطلقة
+          ctx.drawImage(powerBulletImg, -13 * S, -20.5 * S, 26 * S, 41 * S);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = '#ffb347'; ctx.shadowColor = '#ffb347';
+          ctx.fillRect(bl.x - 3.5 * S, bl.y - 11 * S, 7 * S, 22 * S);
+          ctx.fillStyle = '#fff27a'; ctx.shadowColor = '#fff27a';
+        }
+      } else if (imgReady(powerBulletImg)) {   // الطلقة العادية: نفس الشكل لكن أصغر وبلون أصفر
+        ctx.save();
+        ctx.shadowBlur = 0;
+        ctx.translate(bl.x, bl.y);
+        ctx.rotate(Math.atan2(bl.vx || 0, bl.v));
+        ctx.drawImage(yellowBulletSprite() || powerBulletImg, -8 * S, -12.7 * S, 16 * S, 25.4 * S);
+        ctx.restore();
+      } else ctx.fillRect(bl.x - 2 * S, bl.y - 8 * S, 4 * S, 14 * S);
+    }
     ctx.shadowBlur = 0;
     for (var a = 0; a < aliens.length; a++) drawAlien(aliens[a]);
     ctx.fillStyle = '#ff5c7a';
@@ -400,4 +450,4 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
-    
+        
