@@ -9,8 +9,9 @@
   var level = 1;
   var aliens = [], bullets = [], parts = [], stars = [], ebullets = [], drops = [];
   var SHIELD_TIME = 8, MULTI_TIME = 10, POWER_TIME = 12;   // مدة الدرع والطلقات الإضافية والمركبة القوية بالثواني
-  var ship = { x: 0, target: 0, inv: 0, power: 0, flash: 0 };   // power: وقت المركبة القوية المتبقي
+  var ship = { x: 0, target: 0, y: 0, ty: 0, inv: 0, power: 0, flash: 0 };   // power: وقت المركبة القوية المتبقي
   var keys = {};
+  var swarmT = 6;   // مؤقّت ظهور الأسراب
 
   // ---------- صور المركبة والوحوش (ضعها في نفس مجلد index.html) ----------
   function loadImg(src) { var im = new Image(); im.src = src; return im; }
@@ -33,6 +34,9 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     S = Math.max(0.6, Math.min(1.3, H / 640));
     if (!ship.x) { ship.x = ship.target = W / 2; }
+    if (!ship.y) { ship.y = ship.ty = H - 50 * S; }
+    ship.y = Math.max(H * 0.25, Math.min(ship.y, H - 50 * S));
+    ship.ty = Math.max(H * 0.25, Math.min(ship.ty, H - 50 * S));
     ship.x = Math.max(18 * S, Math.min(ship.x, W - 18 * S));
     ship.target = Math.max(18 * S, Math.min(ship.target, W - 18 * S));
   }
@@ -105,7 +109,7 @@
     levelEl.textContent = 'LEVEL 1';
     levelToast.classList.remove('show');
     hearts();
-    ship.x = ship.target = W / 2; ship.inv = 0; ship.shield = 0; ship.multi = 0; ship.power = 0; ship.flash = 0;
+    ship.x = ship.target = W / 2; ship.y = ship.ty = H - 50 * S; swarmT = 6; ship.inv = 0; ship.shield = 0; ship.multi = 0; ship.power = 0; ship.flash = 0;
   }
 
   function start() {
@@ -170,7 +174,7 @@
         var kind = rnd < 0.30 ? 'shield' : (rnd < 0.60 ? 'multi' : (rnd < 0.80 ? 'power' : 'heart'));
         if (al.type === 'boss' && i === 0) kind = 'power';   // الزعيم يترك المركبة القوية دائمًا
         if (kind === 'heart' && lives >= 3) kind = 'shield';   // القلب يظهر فقط إذا خسرت قلبًا
-        drops.push({ kind: kind, x: al.x + (i - 0.5 * (n - 1)) * 44 * S, y: al.y, ph: Math.random() * 6 });
+        drops.push({ kind: kind, x: al.x + (i - 0.5 * (n - 1)) * 44 * S, y: al.y, ph: Math.random() * 6, vx: (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 55) * S });
       }
     }
   }
@@ -184,7 +188,7 @@
       tone(520, 880, 0.18, 'sine', 0.06); tone(880, 1320, 0.18, 'sine', 0.05, 0.1);
     } else if (dp.kind === 'power') {      // مركبة أقوى بطلقات أقوى لفترة قصيرة
       ship.power = POWER_TIME; ship.flash = 0.6;
-      burst(ship.x, H - 52 * S, '#ffd166', 26);
+      burst(ship.x, ship.y - 2 * S, '#ffd166', 26);
       powerToast('مركبة قوية!');
       tone(392, 392, 0.09, 'square', 0.05); tone(523, 523, 0.09, 'square', 0.05, 0.09);
       tone(659, 659, 0.09, 'square', 0.05, 0.18); tone(784, 1047, 0.22, 'square', 0.05, 0.27);
@@ -202,34 +206,90 @@
   function hurt(passed) {                  // passed = true: وحش تجاوزك، والدرع لا يحميك منه
     if (ship.shield > 0 && !passed) {      // الدرع يمتص الاصطدام والكرات النارية فقط
       tone(700, 300, 0.12, 'triangle', 0.06);
-      burst(ship.x, H - 50 * S, '#5ee7ff', 10);
+      burst(ship.x, ship.y, '#5ee7ff', 10);
       return;
     }
     lives--; hearts();
     ship.inv = 1.4;
     sfx.hurt();
-    burst(ship.x, H - 50 * S, '#ff5c7a', 22);
+    burst(ship.x, ship.y, '#ff5c7a', 22);
     if (lives <= 0) end();
+  }
+
+  function alienDef(type) {
+    var tr = difficultyTier();
+    return {
+      small: { r: 20, hp: 1, v: 85, c: '#7cfc9a', pts: 1 },
+      zig:   { r: 19, hp: 1, v: 105, c: '#ff7ad9', pts: 2 },
+      big:   { r: 28, hp: 4 + tr * 2, v: 55, c: '#ffb347', pts: 5 }
+    }[type];
+  }
+
+  function speedMul() { return Math.min(2.2, Math.pow(1.04, level - 1)); }   // تزيد السرعة مع كل مستوى
+
+  function makeAlien(type, x, y, extra) {
+    var d = alienDef(type);
+    var al = { type: type, r: d.r * S, hp: d.hp, max: d.hp, c: d.c, pts: d.pts,
+               x: x, x0: x, y: y, v: d.v * S * speedMul(), ph: Math.random() * 6, flash: 0 };
+    for (var key in extra) al[key] = extra[key];
+    aliens.push(al);
+    return al;
   }
 
   function spawn() {
     var r = Math.random();
     var type = r < 0.18 + Math.min(score, 150) * 0.001 ? 'big' : (r < 0.55 ? 'zig' : 'small');
-    var tier = difficultyTier();
-    var d = {
-      small: { r: 20, hp: 1, v: 85, c: '#7cfc9a', pts: 1 },
-      zig:   { r: 19, hp: 1, v: 105, c: '#ff7ad9', pts: 2 },
-      big:   { r: 28, hp: 4 + tier * 2, v: 55, c: '#ffb347', pts: 5 }
-    }[type];
-    var rad = d.r * S;
-    var difficultySpeed = Math.min(2.2, Math.pow(1.15, tier));
-    aliens.push({
-      type: type, r: rad, hp: d.hp, max: d.hp, c: d.c, pts: d.pts,
-      x: rad + Math.random() * Math.max(0, W - rad * 2), x0: 0, y: -rad,
-      v: d.v * S * difficultySpeed,
-      ph: Math.random() * 6, flash: 0
-    });
-    aliens[aliens.length - 1].x0 = aliens[aliens.length - 1].x;
+    var rad = alienDef(type).r * S;
+    if (type !== 'zig' && Math.random() < 0.45) {          // يدخل من أحد الجانبين بشكل قطري
+      var dir = Math.random() < 0.5 ? 1 : -1;
+      var side = makeAlien(type, dir > 0 ? -rad : W + rad, H * (0.05 + Math.random() * 0.3),
+                           { vx: dir * (70 + Math.random() * 60) * S * speedMul() });
+      side.v *= 0.7;
+      return;
+    }
+    makeAlien(type, rad + Math.random() * Math.max(0, W - rad * 2), -rad);
+  }
+
+  // ---------- الأسراب: V ، ثعبان ، حلقة حول وحش كبير ، شبكة ----------
+  function spawnSwarm() {
+    var kind = ['v', 'snake', 'ring', 'grid'][Math.floor(Math.random() * 4)];
+    var dir = Math.random() < 0.5 ? 1 : -1;
+    var n = Math.min(9, 5 + Math.floor(level / 4));
+    if (kind === 'ring') n = 7;
+    if (kind === 'grid') n = level >= 10 ? 12 : 8;
+    var sw = { kind: kind, t0: clock, dir: dir, sp: speedMul(), n: n,
+               x0: dir > 0 ? -50 * S : W + 50 * S, y0: H * (0.08 + Math.random() * 0.2) };
+    if (kind === 'grid') sw.y0 = -50 * S;                  // الشبكة تنزل من الأعلى، والباقي من الجوانب
+    for (var k = 0; k < n; k++) {
+      var type = kind === 'snake' ? 'zig' : (kind === 'ring' && k === 0 ? 'big' : (kind === 'grid' && k < 4 ? 'zig' : 'small'));
+      makeAlien(type, -999, -999, { sw: sw, k: k });
+    }
+    tone(180, 90, 0.25, 'sawtooth', 0.05);
+  }
+
+  function swarmPos(al) {                                   // موضع كل وحش = دالة بزمن السرب ورقمه
+    var s = al.sw, t = clock - s.t0, k = al.k, X, Y;
+    if (s.kind === 'snake') {
+      var u = t - k * 0.32;
+      X = s.x0 + s.dir * 150 * S * s.sp * u;
+      Y = s.y0 + Math.sin(u * 2.4) * 60 * S + u * 24 * S * s.sp;
+    } else if (s.kind === 'ring') {
+      var cx = s.x0 + s.dir * 72 * S * s.sp * t, cy = s.y0 + 44 * S * s.sp * t;
+      if (k === 0) { X = cx; Y = cy; }
+      else {
+        var a = s.dir * t * 2.2 + (k - 1) * 6.283 / (s.n - 1);
+        X = cx + Math.cos(a) * 62 * S; Y = cy + Math.sin(a) * 54 * S;
+      }
+    } else if (s.kind === 'grid') {
+      var half = Math.max(0, W / 2 - 1.5 * 42 * S - 24 * S);
+      X = W / 2 + Math.sin(t * 0.8) * half + (k % 4 - 1.5) * 42 * S;
+      Y = s.y0 + t * 38 * S * s.sp - Math.floor(k / 4) * 40 * S;
+    } else {
+      var row = Math.ceil(k / 2), side = k % 2 ? 1 : -1;
+      X = s.x0 + s.dir * 95 * S * s.sp * t + side * row * 34 * S;
+      Y = s.y0 + 60 * S * s.sp * t - row * 30 * S;
+    }
+    al.x = X; al.y = Y;
   }
 
   function fire() {
@@ -241,7 +301,7 @@
     var vxs = null;
     if (ship.multi > 0) { offs = [-18, -9, 0, 9, 18]; vxs = [-70, -35, 0, 35, 70]; }   // مكافأة الطلقات الإضافية
     for (var i = 0; i < offs.length; i++) {
-      bullets.push({ x: ship.x + offs[i] * S, y: H - 66 * S, v: 560 * S, vx: vxs ? vxs[i] * S : 0, dmg: strong ? 2 : 1 });
+      bullets.push({ x: ship.x + offs[i] * S, y: ship.y - 16 * S, v: 560 * S, vx: vxs ? vxs[i] * S : 0, dmg: strong ? 2 : 1 });
     }
   }
 
@@ -251,7 +311,11 @@
     if (keys.ArrowLeft) ship.target -= sp;
     if (keys.ArrowRight) ship.target += sp;
     ship.target = Math.max(18 * S, Math.min(W - 18 * S, ship.target));
+    if (keys.ArrowUp) ship.ty -= sp;
+    if (keys.ArrowDown) ship.ty += sp;
+    ship.ty = Math.max(H * 0.25, Math.min(H - 50 * S, ship.ty));
     ship.x += (ship.target - ship.x) * Math.min(1, dt * 18);
+    ship.y += (ship.ty - ship.y) * Math.min(1, dt * 18);
     if (ship.inv > 0) ship.inv -= dt;
 
     fireT -= dt;
@@ -262,7 +326,13 @@
       spawn();
       // كل خمسة مستويات تصبح موجات الأعداء أسرع وأكثر كثافة.
       var tier = difficultyTier();
-      spawnT = Math.max(0.32, Math.pow(0.90, tier));
+      spawnT = Math.max(0.3, Math.pow(0.93, level - 1));   // يظهرون أسرع مع كل مستوى
+    }
+
+    swarmT -= dt;
+    if (swarmT <= 0) {
+      swarmT = Math.max(4.5, 12 - level * 0.5) + Math.random() * 2;
+      if (!aliens.some(function (q) { return q.type === 'boss'; })) spawnSwarm();
     }
 
     for (var i = bullets.length - 1; i >= 0; i--) {
@@ -271,11 +341,16 @@
       if (bullets[i].y < -10 || bullets[i].x < -10 || bullets[i].x > W + 10) bullets.splice(i, 1);
     }
 
-    var shipY = H - 50 * S;
+    var shipY = ship.y;
     for (var a = aliens.length - 1; a >= 0; a--) {
       var al = aliens[a];
-      al.y += al.v * dt;
-      if (al.type === 'zig') {
+      if (al.sw) swarmPos(al); else { al.y += al.v * dt; if (al.vx) al.x += al.vx * dt; }
+      if (al.sw || al.vx) {              // الأسراب والداخلون من الجوانب يختفون بصمت إذا خرجوا من الشاشة
+        al.age = (al.age || 0) + dt;
+        if (al.x > 0 && al.x < W && al.y > 0 && al.y < H) al.in = true;
+        else if ((al.in && (al.x < -al.r * 2 || al.x > W + al.r * 2 || al.y < -al.r * 2)) || al.age > 40) { aliens.splice(a, 1); continue; }
+      }
+      if (al.type === 'zig' && !al.sw) {
         // البرتقالي الرشيق: يتفادى الطلقات القادمة نحوه
         if (al.dodgeCool > 0) al.dodgeCool -= dt;
         if (al.dodgeT > 0) al.dodgeT -= dt;
@@ -310,7 +385,7 @@
         }
       }
 
-      // اصطدام الطلقات بالأعداء
+    // اصطدام الطلقات بالأعداء
       for (var b = bullets.length - 1; b >= 0; b--) {
         var dx = bullets[b].x - al.x, dy = bullets[b].y - al.y;
         if (dx * dx + dy * dy < (al.r + 4 * S) * (al.r + 4 * S)) {
@@ -335,8 +410,7 @@
       }
       // إذا تجاوز العدو المركبة
       if (al.y - al.r > H) {
-        aliens.splice(a, 1); hurt(true);
-        if (!running) return;
+        aliens.splice(a, 1); continue;   // تجاوز الوحش المركبة: بدون خسارة قلب
       }
     }
 
@@ -360,6 +434,10 @@
     for (var di = drops.length - 1; di >= 0; di--) {
       var dp = drops[di];
       dp.y += 95 * S * dt;
+      dp.x += (dp.vx || 0) * dt;                       // تنجرف جانبيًا وترتد عن الحواف
+      if (dp.x < 16 * S || dp.x > W - 16 * S) { dp.vx = -(dp.vx || 0); dp.x = Math.max(16 * S, Math.min(W - 16 * S, dp.x)); }
+      var mx = ship.x - dp.x, my = shipY - dp.y;       // مغناطيس خفيف نحو المركبة
+      if (mx * mx + my * my < (100 * S) * (100 * S)) { dp.x += mx * Math.min(1, 2.5 * dt); dp.y += my * Math.min(1, 2.5 * dt); }
       var ddx = dp.x - ship.x, ddy = dp.y - shipY;
       if (ddx * ddx + ddy * ddy < (34 * S) * (34 * S)) {
         collectDrop(dp); drops.splice(di, 1); continue;
@@ -372,4 +450,3 @@
       if (q.t > q.life) parts.splice(p, 1);
     }
     }
-    
