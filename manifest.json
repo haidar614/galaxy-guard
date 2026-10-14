@@ -1,0 +1,12 @@
+{
+"id": "./",
+"name": "حرس المجرّة - Galaxy Guard",
+"short_name": "حرس المجرة",
+"description": "لعبة فضائية مليئة بالوحوش والمراحل والتحديات",
+"start_url": "./",
+"scope": "./",
+"display": "fullscreen",
+"orientation": "landscape",
+"background_color": "#10152b",
+"theme_color": "#10152b"
+}
