@@ -177,7 +177,7 @@
     if (!imgReady(img)) { drawShipVector(); return; }           // احتياط: الرسم القديم
     if (ship.inv > 0 && Math.floor(ship.inv * 12) % 2 === 0) return;
     var sz = (strong ? 70 : 60) * S;
-    var x = ship.x - sz / 2, y = H - 50 * S - sz * 0.55;
+    var x = ship.x - sz / 2, y = ship.y - sz * 0.55;
     ctx.save();
     if (strong && !own) {                                       // مؤقتًا: هالة ذهبية بدل صورة المركبة القوية
       ctx.shadowColor = '#ffd166';
@@ -193,14 +193,14 @@
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = k;
       ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 3 * S;
-      ctx.beginPath(); ctx.arc(ship.x, H - 52 * S, (1 - k) * 70 * S + 20 * S, 0, 6.283); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ship.x, ship.y - 2 * S, (1 - k) * 70 * S + 20 * S, 0, 6.283); ctx.stroke();
     }
     ctx.restore();
   }
 
   function drawShipVector() {
     if (ship.inv > 0 && Math.floor(ship.inv * 12) % 2 === 0) return;
-    var x = ship.x, y = H - 50 * S, k = S;
+    var x = ship.x, y = ship.y, k = S;
     ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
     // اللهب
     var fl = 10 + Math.random() * 8;
@@ -271,7 +271,7 @@
   function drawShield() {
     if (!(ship.shield > 0)) return;
     if (ship.shield < 2 && Math.floor(clock * 10) % 2 === 0) return;   // يومض قبل أن ينتهي
-    var cx = ship.x, cy = H - 52 * S, rr = 34 * S;
+    var cx = ship.x, cy = ship.y - 2 * S, rr = 34 * S;
     ctx.save();
     ctx.shadowColor = '#5ee7ff'; ctx.shadowBlur = 12;
     ctx.fillStyle = 'rgba(94,231,255,.10)';
@@ -356,12 +356,24 @@
     if (running) requestAnimationFrame(loop);
   }
 
-  function pointerX(e) {
-    var r = cv.getBoundingClientRect();
-    ship.target = Math.max(18 * S, Math.min(W - 18 * S, e.clientX - r.left));
+  // تحكم حر: اللمس بسحب نسبي (الإصبع لا يغطي المركبة)، والماوس يتبع المؤشر
+  var drag = null;
+  function moveShipTo(x, y) {
+    ship.target = Math.max(18 * S, Math.min(W - 18 * S, x));
+    ship.ty = Math.max(H * 0.25, Math.min(H - 50 * S, y));
   }
-  cv.addEventListener('pointerdown', pointerX);
-  cv.addEventListener('pointermove', pointerX);
+  function pointerMove(e) {
+    var r = cv.getBoundingClientRect();
+    if (e.pointerType === 'mouse') { moveShipTo(e.clientX - r.left, e.clientY - r.top); return; }
+    if (drag) moveShipTo(drag.sx + (e.clientX - drag.px) * 1.25, drag.sy + (e.clientY - drag.py) * 1.25);
+  }
+  cv.addEventListener('pointerdown', function (e) {
+    if (e.pointerType !== 'mouse') drag = { px: e.clientX, py: e.clientY, sx: ship.target, sy: ship.ty };
+    pointerMove(e);
+  });
+  cv.addEventListener('pointermove', pointerMove);
+  cv.addEventListener('pointerup', function () { drag = null; });
+  cv.addEventListener('pointercancel', function () { drag = null; });
   window.addEventListener('keydown', function (e) { keys[e.key] = true; });
   window.addEventListener('keyup', function (e) { keys[e.key] = false; });
   var pauseBtn = document.getElementById('pauseBtn');
@@ -450,4 +462,3 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
-        
