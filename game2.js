@@ -332,10 +332,32 @@
     }
     ctx.shadowBlur = 0;
     for (var a = 0; a < aliens.length; a++) drawAlien(aliens[a]);
-    ctx.fillStyle = '#ff5c7a';
-    ctx.shadowColor = '#ff5c7a'; ctx.shadowBlur = 10;
     for (var ei = 0; ei < ebullets.length; ei++) {
-      ctx.beginPath(); ctx.arc(ebullets[ei].x, ebullets[ei].y, 6 * S, 0, 6.283); ctx.fill();
+      var eb = ebullets[ei], ea = Math.atan2(eb.vy, eb.vx);
+      ctx.save(); ctx.translate(eb.x, eb.y); ctx.rotate(ea);
+      if (eb.b && bossBulletImg.complete && bossBulletImg.naturalWidth > 0) {   // صورة طلقة الزعيم تدور حول نفسها
+        ctx.shadowBlur = 0; ctx.rotate(clock * 6);
+        ctx.drawImage(bossBulletImg, -22 * S, -22 * S, 44 * S, 44 * S);
+      } else if (eb.b) {                                   // «عين» صغيرة بألوان الزعيم: جسم نيلي وهالة بنفسجية وقزحية برتقالية بحدقة طولية
+        ctx.shadowColor = '#d23bff'; ctx.shadowBlur = 16;
+        ctx.fillStyle = 'rgba(196,59,255,0.35)';
+        ctx.beginPath(); ctx.ellipse(-8 * S, 0, 16 * S, 6 * S, 0, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#2a1a9a'; ctx.strokeStyle = '#c43bff'; ctx.lineWidth = 2 * S;
+        ctx.beginPath(); ctx.arc(0, 0, 8 * S, 0, 6.283); ctx.fill(); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ff7a1a'; ctx.beginPath(); ctx.arc(0, 0, 5 * S, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.arc(0, 0, 2.7 * S, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#12002a'; ctx.beginPath(); ctx.ellipse(0, 0, 4 * S, 1.1 * S, 0, 0, 6.283); ctx.fill();
+      } else if (monsterBulletImg.complete && monsterBulletImg.naturalWidth > 0) {   // كرة نار بذيل قصير لرصاص الوحوش
+        ctx.shadowBlur = 0;
+        ctx.drawImage(monsterBulletImg, -31 * S, -8.5 * S, 46 * S, 17 * S);
+      } else {                                      // احتياطي: شهاب برتقالي مدبّب
+        ctx.shadowColor = '#ff8a3d'; ctx.shadowBlur = 10;
+        ctx.fillStyle = '#ff8a3d';
+        ctx.beginPath(); ctx.moveTo(6 * S, 0); ctx.lineTo(-4 * S, -4.5 * S); ctx.lineTo(-14 * S, 0); ctx.lineTo(-4 * S, 4.5 * S); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffe9a8'; ctx.beginPath(); ctx.arc(0, 0, 2.6 * S, 0, 6.283); ctx.fill();
+      }
+      ctx.restore();
     }
     ctx.shadowBlur = 0;
     drawDrops();
