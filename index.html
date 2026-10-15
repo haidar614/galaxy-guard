@@ -188,6 +188,172 @@
     max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
+  /* ================= الشاشة الرئيسية — Glassblue ================= */
+  #overlay {
+    position: fixed; inset: 0; z-index: 5;   /* تغطي الشاشة كلها فيختفي الشريط العلوي خلفها */
+    justify-content: space-between; gap: 10px; overflow: hidden;
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px calc(env(safe-area-inset-bottom, 0px) + 14px);
+    background:
+      radial-gradient(1.6px 1.6px at 12% 14%, rgba(255,255,255,.9), transparent 60%),
+      radial-gradient(1px 1px at 30% 9%, rgba(255,255,255,.7), transparent 60%),
+      radial-gradient(1.4px 1.4px at 74% 12%, rgba(190,235,255,.9), transparent 60%),
+      radial-gradient(1px 1px at 91% 27%, rgba(255,255,255,.75), transparent 60%),
+      radial-gradient(1.4px 1.4px at 6% 42%, rgba(190,235,255,.8), transparent 60%),
+      radial-gradient(1px 1px at 93% 55%, rgba(255,255,255,.7), transparent 60%),
+      radial-gradient(1.4px 1.4px at 18% 71%, rgba(255,255,255,.8), transparent 60%),
+      radial-gradient(1px 1px at 84% 80%, rgba(190,235,255,.8), transparent 60%),
+      radial-gradient(ellipse 70% 36% at 16% 20%, rgba(40,110,255,.26), transparent 70%),
+      radial-gradient(ellipse 60% 32% at 88% 58%, rgba(80,70,255,.20), transparent 70%),
+      radial-gradient(ellipse 85% 40% at 50% 108%, rgba(30,140,255,.30), transparent 65%),
+      linear-gradient(180deg, rgba(5,9,34,.94), rgba(3,7,26,.97));
+  }
+  #homeHead { flex: 0 0 auto; text-align: center; }
+  #overlay h1 {
+    font-size: clamp(2.5rem, 12vw, 3.3rem); line-height: 1.15;
+    background: linear-gradient(180deg, #ffffff 0%, #a6ecff 50%, #4aa8ff 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 14px rgba(80, 200, 255, .5));
+  }
+  #ovSub {
+    margin-top: 2px; font-size: .78rem; font-weight: 700; letter-spacing: .5em;
+    padding-left: .5em; color: rgba(160, 215, 255, .85);
+  }
+  #overlay.over #ovSub { display: none; }
+  #overlay:not(.over) #ovText { display: none; }
+  #overlay.over #ovText {
+    flex: 0 0 auto; max-width: 32ch; padding: 10px 16px; border-radius: 16px; font-size: .95rem;
+    background: rgba(130, 200, 255, .08); border: 1px solid rgba(130, 200, 255, .28);
+  }
+
+  #homeHero { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+  #homeHero::before {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 200px; height: 200px;
+    transform: translate(-50%, -54%);
+    background: radial-gradient(circle, rgba(70, 160, 255, .42), rgba(70, 160, 255, 0) 68%);
+  }
+  #heroPad {
+    position: absolute; left: 50%; bottom: 4%; width: 190px; height: 32px; transform: translateX(-50%);
+    border-radius: 50%; border: 1px solid rgba(150, 215, 255, .42);
+    background: radial-gradient(ellipse at 50% 35%, rgba(170, 225, 255, .40), rgba(60, 120, 255, .12) 62%, transparent 74%);
+    box-shadow: 0 0 22px rgba(70, 160, 255, .38), inset 0 0 14px rgba(160, 220, 255, .22);
+  }
+  #heroShip {
+    position: relative; height: 100%; max-height: 116px; width: auto;
+    filter: drop-shadow(0 6px 14px rgba(40, 140, 255, .6));
+    animation: heroFloat 3.4s ease-in-out infinite;
+  }
+  @keyframes heroFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+  #homeMenu { flex: 0 0 auto; width: min(100%, 320px); display: flex; flex-direction: column; gap: 9px; }
+  #homeMenu button {
+    position: relative; overflow: hidden; width: 100%; min-height: 46px; margin: 0; padding: 0 18px;
+    border-radius: 16px; font: 700 1.08rem "Tajawal", "Segoe UI", sans-serif; color: #dff4ff;
+    background: linear-gradient(180deg, rgba(150, 205, 255, .17), rgba(60, 110, 230, .10));
+    border: 1px solid rgba(130, 200, 255, .38);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 -10px 18px rgba(40, 90, 220, .12), 0 6px 16px rgba(0, 10, 40, .45);
+    transition: transform .12s ease, box-shadow .2s ease, background .2s ease;
+  }
+  #homeMenu button::before {   /* انعكاس ضوئي زجاجي */
+    content: ""; position: absolute; inset: 0 0 52% 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.17), rgba(255,255,255,0));
+  }
+  #homeMenu button:active {
+    transform: scale(.965) translateY(1px); background: rgba(80, 150, 255, .24);
+    box-shadow: inset 0 2px 10px rgba(0, 20, 80, .55), 0 2px 8px rgba(0, 10, 40, .4);
+  }
+  #homeMenu #startBtn {
+    min-height: 54px; font-size: 1.3rem; color: #04223d;
+    background: linear-gradient(180deg, #c4f5ff 0%, #5ee7ff 46%, #2f8cff 100%);
+    border-color: rgba(205, 246, 255, .85);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 0 20px rgba(94, 231, 255, .42), 0 8px 20px rgba(20, 90, 200, .45);
+    animation: startGlow 2.8s ease-in-out infinite;
+  }
+  #homeMenu #startBtn::before { background: linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0)); }
+  @keyframes startGlow {
+    0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 0 16px rgba(94,231,255,.32), 0 8px 20px rgba(20,90,200,.45); }
+    50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 0 28px rgba(94,231,255,.6), 0 8px 20px rgba(20,90,200,.45); }
+  }
+
+  #homeBar {
+    flex: 0 0 auto; width: min(100%, 320px); min-height: 52px; display: flex; align-items: center; justify-content: space-around; gap: 18px;
+    padding: 6px 14px; border-radius: 18px;
+    background: rgba(120, 185, 255, .10); border: 1px solid rgba(130, 200, 255, .30);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 20px rgba(0, 10, 40, .45);
+  }
+  .homeStat { display: flex; flex-direction: column; align-items: center; line-height: 1.2; text-align: center; }
+  .homeStat small { font-size: .72rem; opacity: .7; }
+  .homeStat b { font-size: 1.15rem; color: #bff3ff; direction: ltr; text-align: center; }
+
+  /* أيقونات الصوت والموسيقى (بدون إيموجي) */
+  #mute, #musicBtn { display: none; color: #bff3ff; }   /* انتقل التحكم بالصوت والموسيقى إلى الإعدادات */
+  #mute::before, #musicBtn::before{
+    content: ""; display: block; width: 20px; height: 20px; background: currentColor;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
+    -webkit-mask-size: contain; mask-size: contain;
+  }
+  #mute::before{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M3%209v6h4l5%204V5L7%209H3z%27/%3E%3Cpath%20d%3D%27M16%208.5a5%205%200%200%201%200%207M18.5%206a8.5%208.5%200%200%201%200%2012%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M3%209v6h4l5%204V5L7%209H3z%27/%3E%3Cpath%20d%3D%27M16%208.5a5%205%200%200%201%200%207M18.5%206a8.5%208.5%200%200%201%200%2012%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E"); }
+  #mute.off::before{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M3%209v6h4l5%204V5L7%209H3z%27/%3E%3Cpath%20d%3D%27M16%209l6%206M22%209l-6%206%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M3%209v6h4l5%204V5L7%209H3z%27/%3E%3Cpath%20d%3D%27M16%209l6%206M22%209l-6%206%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E"); }
+  #musicBtn::before{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M9%2018V5l11-2v13%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linejoin%3D%27round%27/%3E%3Ccircle%20cx%3D%276.5%27%20cy%3D%2718%27%20r%3D%273%27/%3E%3Ccircle%20cx%3D%2717.5%27%20cy%3D%2716%27%20r%3D%273%27/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M9%2018V5l11-2v13%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linejoin%3D%27round%27/%3E%3Ccircle%20cx%3D%276.5%27%20cy%3D%2718%27%20r%3D%273%27/%3E%3Ccircle%20cx%3D%2717.5%27%20cy%3D%2716%27%20r%3D%273%27/%3E%3C/svg%3E"); }
+  #musicBtn.off::before{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M9%2018V5l11-2v13%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linejoin%3D%27round%27/%3E%3Ccircle%20cx%3D%276.5%27%20cy%3D%2718%27%20r%3D%273%27/%3E%3Ccircle%20cx%3D%2717.5%27%20cy%3D%2716%27%20r%3D%273%27/%3E%3Cpath%20d%3D%27M3%203l18%2018%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272.6%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M9%2018V5l11-2v13%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linejoin%3D%27round%27/%3E%3Ccircle%20cx%3D%276.5%27%20cy%3D%2718%27%20r%3D%273%27/%3E%3Ccircle%20cx%3D%2717.5%27%20cy%3D%2716%27%20r%3D%273%27/%3E%3Cpath%20d%3D%27M3%203l18%2018%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272.6%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E"); }
+  #mute.off, #musicBtn.off{ color: #ff8aa0; }
+
+  #app:has(#overlay:not(.hidden)) #hud { visibility: hidden; }   /* القلوب والنقاط والأفضل تظهر داخل اللعبة فقط */
+  #pauseSettingsBtn {
+    margin-top: 0; padding: 10px 28px; font-size: 1.05rem; color: #dff4ff;
+    background: rgba(130, 200, 255, .14); border: 1px solid rgba(130, 200, 255, .38);
+  }
+  #settingsModal.fromPause #changeNameBtn { display: none; }
+  #nameIcon:empty { display: none; }
+  /* متجر المركبات */
+  #walletRow { align-self: center; padding: 6px 16px; border-radius: 999px; font-weight: 700; color: #ffd166; background: rgba(255, 209, 102, .12); border: 1px solid rgba(255, 209, 102, .4); }
+  .coinDot { display: inline-block; width: 12px; height: 12px; margin-inline-start: 6px; vertical-align: -1px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff2b0, #ffb703); box-shadow: 0 0 8px rgba(255, 209, 102, .6); }
+  #shopMsg { min-height: 1.2em; font-size: .85rem; color: #ff8aa0; text-align: center; }
+  #shipList { display: flex; flex-direction: column; gap: 10px; }
+  .shipCard { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 10px; padding: 10px; text-align: right; border-radius: 16px; background: rgba(255,255,255,.06); border: 1px solid rgba(130, 200, 255, .22); }
+  .shipCard.sel { border-color: #5ee7ff; box-shadow: 0 0 14px rgba(94, 231, 255, .25); }
+  .gpanel .shipCard img { width: 56px; height: 56px; object-fit: contain; align-self: center; }
+  .shipInfo b { display: block; color: #dff4ff; }
+  .shipInfo small { display: block; opacity: .75; font-size: .78rem; line-height: 1.5; }
+  .shipCard button { white-space: nowrap; margin: 0; padding: 8px 14px; border-radius: 12px; font-size: .95rem; color: #04223d; border: 0; background: linear-gradient(180deg, #c4f5ff, #5ee7ff 50%, #2f8cff); }
+  .shipCard button:disabled { color: rgba(223, 244, 255, .6); background: rgba(255,255,255,.12); cursor: default; }
+
+  /* نوافذ: المركبة / الإعدادات / حول اللعبة */
+  .gmodal {
+    position: fixed; inset: 0; z-index: 25; display: flex; align-items: center; justify-content: center; padding: 18px;
+    background: rgba(3, 8, 26, .78); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .gmodal.hidden { display: none; }
+  .gpanel {
+    width: min(100%, 360px); max-height: 84vh; overflow: auto; display: flex; flex-direction: column; gap: 12px;
+    padding: 22px 20px 18px; text-align: center; border-radius: 24px;
+    background: linear-gradient(180deg, rgba(150, 205, 255, .16), rgba(50, 100, 230, .10)), rgba(10, 18, 52, .92);
+    border: 1px solid rgba(130, 200, 255, .38);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 18px 48px rgba(0, 8, 40, .6);
+  }
+  .gpanel h2 { margin: 0; font: 400 1.9rem "Lalezar", "Tajawal", sans-serif; color: #bff3ff; }
+  .gpanel p { max-width: none; font-size: .95rem; line-height: 1.8; opacity: .9; text-align: right; }
+  .gpanel img { align-self: center; height: 110px; width: auto; filter: drop-shadow(0 6px 14px rgba(40, 140, 255, .6)); }
+  .grow {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px;
+    border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(130, 200, 255, .22);
+  }
+  .gswitch {
+    position: relative; flex: 0 0 auto; width: 52px; height: 30px; margin: 0; padding: 0; border-radius: 999px;
+    background: rgba(255,255,255,.14); border: 1px solid rgba(130, 200, 255, .35); transition: background .2s ease;
+  }
+  .gswitch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #cfe6ff; transition: transform .2s ease; }
+  .gswitch.on { background: linear-gradient(180deg, #5ee7ff, #2f8cff); }
+  .gswitch.on::after { transform: translateX(22px); background: #fff; }
+  .gclose {
+    margin: 4px auto 0; padding: 10px 30px; border-radius: 14px; font-size: 1.05rem; color: #dff4ff;
+    background: rgba(130, 200, 255, .16); border: 1px solid rgba(130, 200, 255, .38);
+  }
+  #settingsModal #changeNameBtn {
+    width: 100%; max-width: none; margin: 0; padding: 11px 14px; border-radius: 14px; opacity: 1; font-size: 1rem;
+    background: rgba(130, 200, 255, .12); border: 1px solid rgba(130, 200, 255, .32); color: #dff4ff;
+  }
+  @media (prefers-reduced-motion: reduce) { #heroShip, #homeMenu #startBtn { animation: none; } }
+
 </style>
 </head>
 <body>
@@ -202,20 +368,36 @@
     <canvas id="cv"></canvas>
     <div id="levelToast" aria-live="polite"></div>
     <div id="overlay">
-      <h1 id="ovTitle">حارس المجرّة</h1>
-      <p id="ovText">حرّك مركبتك بإصبعك، وهي تطلق النار تلقائيًا. كل 25 نقطة تنتقل إلى مستوى جديد، وتواجه زعيمًا كل 5 مستويات. أوقف المخلوقات قبل أن تصل إليك.</p>
-      <button id="startBtn">ابدأ المعركة</button>
-      <button id="leaderboardBtn">🏆 أبطال المجرّة</button>
-      <button id="changeNameBtn">✏️ سجّل اسمك</button>
+      <div id="homeHead">
+        <h1 id="ovTitle">حارس المجرّة</h1>
+        <div id="ovSub" dir="ltr">GALAXY GUARD</div>
+      </div>
+      <p id="ovText">دافع عن المجرّة وأسقط الوحوش.</p>
+      <div id="homeHero" aria-hidden="true">
+        <div id="heroPad"></div>
+        <img id="heroShip" src="1000555847.png" alt="" onerror="this.remove()">
+      </div>
+      <div id="homeMenu">
+        <button id="startBtn">ابدأ اللعب</button>
+        <button id="shipBtn" type="button">اختيار المركبة</button>
+        <button id="leaderboardBtn">الترتيب العالمي</button>
+        <button id="settingsBtn" type="button">الإعدادات</button>
+        <button id="aboutBtn" type="button">حول اللعبة</button>
+      </div>
+      <div id="homeBar">
+        <div class="homeStat"><small>أفضل نتيجة</small><b id="homeBest">0</b></div>
+        <div class="homeStat"><small>أعلى مستوى</small><b id="homeLevel">1</b></div>
+      </div>
     </div>
-    <button id="mute" aria-label="تشغيل أو إيقاف المؤثرات الصوتية">🔊</button>
-    <button id="musicBtn" aria-label="تشغيل أو إيقاف موسيقى الخلفية">🎵</button>
+    <button id="mute" aria-label="تشغيل أو إيقاف المؤثرات الصوتية"></button>
+    <button id="musicBtn" aria-label="تشغيل أو إيقاف موسيقى الخلفية"></button>
     <button id="pauseBtn" aria-label="إيقاف مؤقت"></button>
     <div id="pauseModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
       <div id="pausePanel">
         <h2 id="pauseTitle">اللعبة متوقفة</h2>
         <p>خذ استراحة، المخلوقات ستنتظرك.</p>
         <button id="resumeBtn">متابعة</button>
+        <button id="pauseSettingsBtn" type="button">الإعدادات</button>
         <button id="quitBtn">انسحاب</button>
       </div>
     </div>
@@ -224,7 +406,7 @@
 
 <div id="leaderboardModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">
   <div id="leaderboardPanel">
-    <h2 id="leaderboardTitle">🏆 أبطال المجرّة</h2>
+    <h2 id="leaderboardTitle">الترتيب العالمي</h2>
     <p id="leaderboardHint">أفضل 10 لاعبين على مستوى العالم</p>
     <div id="leaderboardStatus">جارٍ تحميل النتائج...</div>
     <div id="leaderboardRows"></div>
@@ -234,7 +416,7 @@
 
 <div id="nameModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="nameTitle">
   <form id="namePanel" autocomplete="off">
-    <div id="nameIcon">🚀</div>
+    <div id="nameIcon"></div>
     <h2 id="nameTitle">سجّل اسمك يا بطل</h2>
     <p id="nameHint">اختر لقبًا يظهر في لوحة أبطال المجرّة (من 2 إلى 16 حرفًا). بدون اسم لن تُسجَّل نتيجتك.</p>
     <input id="playerNameInput" type="text" maxlength="16" placeholder="مثال: صقر المجرّة"
@@ -247,11 +429,98 @@
   </form>
 </div>
 
+<div id="shipModal" class="gmodal hidden" role="dialog" aria-modal="true" aria-labelledby="shipTitle">
+  <div class="gpanel">
+    <h2 id="shipTitle">اختيار المركبة</h2>
+    <div id="walletRow">رصيدك: <b id="walletVal">0</b><i class="coinDot"></i></div>
+    <div id="shopMsg" aria-live="polite"></div>
+    <div id="shipList"></div>
+    <button class="gclose" type="button" data-close>إغلاق</button>
+  </div>
+</div>
+
+<div id="settingsModal" class="gmodal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="gpanel">
+    <h2 id="settingsTitle">الإعدادات</h2>
+    <div class="grow"><span>المؤثرات الصوتية</span><button id="setSfx" class="gswitch" type="button" role="switch" aria-checked="true" aria-label="المؤثرات الصوتية"></button></div>
+    <div class="grow"><span>موسيقى الخلفية</span><button id="setMusic" class="gswitch" type="button" role="switch" aria-checked="true" aria-label="موسيقى الخلفية"></button></div>
+    <button id="changeNameBtn">سجّل اسمك</button>
+    <button class="gclose" type="button" data-close>إغلاق</button>
+  </div>
+</div>
+
+<div id="aboutModal" class="gmodal hidden" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+  <div class="gpanel">
+    <h2 id="aboutTitle">حول اللعبة</h2>
+    <p>حارس المجرّة لعبة فضائية: دافع عن المجرّة بمركبتك وأسقط الوحوش قبل أن تصيبك.</p>
+    <p>اسحب بإصبعك لتحريك المركبة بحرية في كل الاتجاهات، وهي تطلق النار تلقائيًا. اجمع التطويرات التي تسقط من الوحوش. لا تخسر قلبًا إلا إذا أصابت المركبةَ رصاصة أو وحش، ويظهر زعيم كل 5 مستويات.</p>
+    <button class="gclose" type="button" data-close>إغلاق</button>
+  </div>
+</div>
+
 <script src="core.js"></script>
 <script src="ship-img.js"></script>
-<script src="game1.js?v=2"></script>
-<script src="game2.js?v=2"></script>
+<script src="game1.js"></script>
+<script src="game2.js"></script>
+<script>
+/* ربط أزرار الشاشة الرئيسية الجديدة (واجهة فقط) */
+(function () {
+  function $(id) { return document.getElementById(id); }
+  function showM(id) { $(id).classList.remove('hidden'); }
+  function syncSound() {
+    var sfxOff = $('mute').classList.contains('off'), musOff = $('musicBtn').classList.contains('off');
+    [['setSfx', sfxOff], ['setMusic', musOff]].forEach(function (p) {
+      $(p[0]).classList.toggle('on', !p[1]);
+      $(p[0]).setAttribute('aria-checked', p[1] ? 'false' : 'true');
+    });
+  }
+  function fwd(src, real) { $(src).addEventListener('click', function () { $(real).click(); syncSound(); }); }
+  function renderShips() {
+    $('walletVal').textContent = wallet;
+    var box = $('shipList'); box.innerHTML = '';
+    SHIPS.forEach(function (s) {
+      var have = owned.indexOf(s.id) >= 0, sel = shipId === s.id;
+      var card = document.createElement('div'); card.className = 'shipCard' + (sel ? ' sel' : '');
+      var img = document.createElement('img'); img.src = '1000555847.png'; img.alt = '';
+      img.style.filter = 'hue-rotate(' + s.hue + 'deg)'; img.onerror = function () { img.style.visibility = 'hidden'; };
+      var info = document.createElement('div'); info.className = 'shipInfo';
+      var nm = document.createElement('b'); nm.textContent = s.name;
+      var ds = document.createElement('small'); ds.textContent = s.desc;
+      info.appendChild(nm); info.appendChild(ds);
+      var btn = document.createElement('button'); btn.type = 'button';
+      btn.textContent = sel ? 'مختارة' : (have ? 'اختيار' : 'شراء ' + s.price);
+      btn.disabled = sel || (!have && wallet < s.price);
+      btn.addEventListener('click', async function () {
+        if (!have) {
+          if (wallet < s.price || !leaderboardReady) return;
+          btn.disabled = true; $('shopMsg').textContent = '';
+          try {
+            setWallet(await supabaseRequest('rpc/galaxy_buy_ship', { method: 'POST', body: JSON.stringify({ p_player_id: getPlayerId(), p_ship_id: s.id }) }));
+          } catch (e) { $('shopMsg').textContent = 'تعذّر الشراء، تأكد من الاتصال وحاول مجددًا.'; renderShips(); return; }
+        }
+        shipId = s.id; saveShop(); applyShip(); renderShips();
+      });
+      card.appendChild(img); card.appendChild(info); card.appendChild(btn); box.appendChild(card);
+    });
+  }
+  $('shipBtn').addEventListener('click', function () {
+    $('shopMsg').textContent = leaderboardReady ? '' : 'المتجر يحتاج اتصالًا بالخادم.';
+    renderShips(); showM('shipModal');
+    flushClaim().then(refreshWallet).then(renderShips);       // مزامنة الرصيد مع الخادم عند فتح المتجر
+  });
+  $('aboutBtn').addEventListener('click', function () { showM('aboutModal'); });
+  $('settingsBtn').addEventListener('click', function () { $('settingsModal').classList.remove('fromPause'); syncSound(); showM('settingsModal'); });
+  $('pauseSettingsBtn').addEventListener('click', function () { $('settingsModal').classList.add('fromPause'); syncSound(); showM('settingsModal'); });
+  [].forEach.call(document.querySelectorAll('.gmodal'), function (m) {
+    m.addEventListener('click', function (e) { if (e.target === m) m.classList.add('hidden'); });
+  });
+  [].forEach.call(document.querySelectorAll('[data-close]'), function (b) {
+    b.addEventListener('click', function () { b.closest('.gmodal').classList.add('hidden'); });
+  });
+  fwd('setSfx', 'mute'); fwd('setMusic', 'musicBtn');
+  syncSound();
+})();
+</script>
 
 </body>
         </html>
-  
