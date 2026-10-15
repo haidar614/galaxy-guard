@@ -3,6 +3,7 @@
   var W = 0, H = 0, S = 1;
   var best = 0;
   try {
+    
   if (localStorage.getItem('galaxy_score_v') !== '2') {
     localStorage.removeItem('galaxy_best');
     localStorage.setItem('galaxy_score_v', '2');
