@@ -65,7 +65,7 @@
 
   function updatePlayerTag() {
     var n = getPlayerName();
-    changeNameBtn.textContent = n ? ('✏️ اللاعب: ' + n) : '✏️ سجّل اسمك';
+    changeNameBtn.textContent = n ? ('اللاعب: ' + n) : 'سجّل اسمك';
   }
 
   function closeNameModal(value) {
@@ -206,9 +206,9 @@
     muted = localStorage.getItem('galaxy_muted') === '1';
     musicMuted = localStorage.getItem('galaxy_music_off') === '1';
   } catch (e) {}
-  muteBtn.textContent = muted ? '🔇' : '🔊';
+  muteBtn.textContent = ''; muteBtn.classList.toggle('off', muted);
   var musicBtn = document.getElementById('musicBtn');
-  musicBtn.textContent = musicMuted ? '🎵̸' : '🎵';
+  musicBtn.textContent = ''; musicBtn.classList.toggle('off', musicMuted);
 
   function ensureAudio() {
     try {
@@ -353,4 +353,4 @@
       tone(659, 784, 0.16, 'square', 0.035, 0.21);
     }
   };
-      
+
