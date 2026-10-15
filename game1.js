@@ -16,6 +16,8 @@
   // ---------- صور المركبة والوحوش (ضعها في نفس مجلد index.html) ----------
   function loadImg(src) { var im = new Image(); im.src = src; return im; }
   function imgReady(im) { return im.complete && im.naturalWidth > 0; }
+  var monsterBulletImg = loadImg('monster-bullet.png');    // رصاص الوحوش
+  var bossBulletImg = loadImg('boss-bullet.png');          // طلقة الزعيم
   var shipImg = loadImg('1000555847.png');                 // المركبة الزرقاء
   // المركبة القوية: الصورة تأتي من ملف ship-img.js، وإن لم يوجد يعود للهالة الذهبية
   var powerShipImg = loadImg(typeof POWER_SHIP_SRC === 'string' ? POWER_SHIP_SRC : 'ship2.png');
@@ -61,7 +63,8 @@
 
   function checkLevel() {
     // كل 25 نقطة ينتقل اللاعب إلى مستوى جديد.
-    var newLevel = Math.floor(score / 25) + 1;
+    var newLevel = 1, acc = 0, need = 25;   // كل مستوى يحتاج نقاطًا أكثر من السابق
+    while (score >= acc + need) { acc += need; newLevel++; need = 25 + 2 * (newLevel - 1); }
     if (newLevel > level) {
       var previousLevel = level;
       level = newLevel;
@@ -84,7 +87,7 @@
   function spawnBoss() {
     var tier = difficultyTier();
     var rad = 50 * S;
-    var hp = 20 + tier * 6;
+    var hp = Math.min(400, 30 + level * 4);
     aliens.push({
       type: 'boss', r: rad, hp: hp, max: hp, c: '#bd75ff', pts: 25,
       x: W / 2, x0: W / 2, y: -rad - 8 * S,
@@ -221,11 +224,11 @@
     return {
       small: { r: 20, hp: 1, v: 85, c: '#7cfc9a', pts: 1 },
       zig:   { r: 19, hp: 1, v: 105, c: '#ff7ad9', pts: 2 },
-      big:   { r: 28, hp: 4 + tr * 2, v: 55, c: '#ffb347', pts: 5 }
+      big:   { r: 28, hp: 4 + Math.floor(level / 2), v: 55, c: '#ffb347', pts: 5 }
     }[type];
   }
 
-  function speedMul() { return Math.min(2.2, Math.pow(1.04, level - 1)); }   // تزيد السرعة مع كل مستوى
+  function speedMul() { return Math.min(2.8, Math.pow(1.045, level - 1)); }   // تزيد السرعة مع كل مستوى
 
   function makeAlien(type, x, y, extra) {
     var d = alienDef(type);
@@ -254,9 +257,9 @@
   function spawnSwarm() {
     var kind = ['v', 'snake', 'ring', 'grid'][Math.floor(Math.random() * 4)];
     var dir = Math.random() < 0.5 ? 1 : -1;
-    var n = Math.min(9, 5 + Math.floor(level / 4));
-    if (kind === 'ring') n = 7;
-    if (kind === 'grid') n = level >= 10 ? 12 : 8;
+    var n = Math.min(14, 5 + Math.floor(level / 3));
+    if (kind === 'ring') n = Math.min(13, 7 + Math.floor(level / 8));
+    if (kind === 'grid') n = 8 + 4 * Math.min(2, Math.floor(level / 8));
     var sw = { kind: kind, t0: clock, dir: dir, sp: speedMul(), n: n,
                x0: dir > 0 ? -50 * S : W + 50 * S, y0: H * (0.08 + Math.random() * 0.2) };
     if (kind === 'grid') sw.y0 = -50 * S;                  // الشبكة تنزل من الأعلى، والباقي من الجوانب
@@ -278,7 +281,7 @@
       if (k === 0) { X = cx; Y = cy; }
       else {
         var a = s.dir * t * 2.2 + (k - 1) * 6.283 / (s.n - 1);
-        X = cx + Math.cos(a) * 62 * S; Y = cy + Math.sin(a) * 54 * S;
+        var rr = Math.max(62, (s.n - 1) * 6.7) * S; X = cx + Math.cos(a) * rr; Y = cy + Math.sin(a) * rr * 0.87;
       }
     } else if (s.kind === 'grid') {
       var half = Math.max(0, W / 2 - 1.5 * 42 * S - 24 * S);
@@ -326,12 +329,12 @@
       spawn();
       // كل خمسة مستويات تصبح موجات الأعداء أسرع وأكثر كثافة.
       var tier = difficultyTier();
-      spawnT = Math.max(0.3, Math.pow(0.93, level - 1));   // يظهرون أسرع مع كل مستوى
+      spawnT = Math.max(0.22, Math.pow(0.95, level - 1));   // يظهرون أسرع مع كل مستوى
     }
 
     swarmT -= dt;
     if (swarmT <= 0) {
-      swarmT = Math.max(4.5, 12 - level * 0.5) + Math.random() * 2;
+      swarmT = Math.max(2.5, 12 - level * 0.35) + Math.random() * 2;
       if (!aliens.some(function (q) { return q.type === 'boss'; })) spawnSwarm();
     }
 
@@ -344,7 +347,12 @@
     var shipY = ship.y;
     for (var a = aliens.length - 1; a >= 0; a--) {
       var al = aliens[a];
-      if (al.sw) swarmPos(al); else { al.y += al.v * dt; if (al.vx) al.x += al.vx * dt; }
+      if (al.sw) swarmPos(al);
+      else if (al.type === 'boss') {         // الزعيم يتوقف أعلى الشاشة ويتحرك يمينًا ويسارًا
+        if (al.y < H * 0.17) al.y += 70 * S * dt;
+        al.bt = (al.bt || 0) + dt;
+        al.x = W / 2 + Math.sin(al.bt * (0.6 + level * 0.008)) * (W / 2 - al.r - 6 * S);
+      } else { al.y += al.v * dt; if (al.vx) al.x += al.vx * dt; }
       if (al.sw || al.vx) {              // الأسراب والداخلون من الجوانب يختفون بصمت إذا خرجوا من الشاشة
         al.age = (al.age || 0) + dt;
         if (al.x > 0 && al.x < W && al.y > 0 && al.y < H) al.in = true;
@@ -378,14 +386,31 @@
       if (al.type === 'boss') {
         al.shootT = (al.shootT === undefined ? 1.5 : al.shootT) - dt;
         if (al.shootT <= 0 && al.y > 0) {
-          al.shootT = Math.max(0.7, 1.6 - difficultyTier() * 0.15);
+          al.shootT = Math.max(0.5, 1.5 - level * 0.015) * (al.hp < al.max * 0.5 ? 0.7 : 1);   // يغضب تحت نصف صحته
           var ang = Math.atan2(shipY - al.y, ship.x - al.x);
-          ebullets.push({ x: al.x, y: al.y + al.r, vx: Math.cos(ang) * 190 * S, vy: Math.sin(ang) * 190 * S });
+          var bspd = (190 + Math.min(150, level * 2)) * S, kf = Math.min(3, Math.floor(level / 10));
+          al.vol = (al.vol || 0) + 1;
+          if (al.vol % 4 === 0) {                        // كل دفعة رابعة: حلقة نار كاملة
+            var ph0 = Math.random() * 6.283;
+            for (var q = 0; q < 12; q++) { var qa = ph0 + q * 6.283 / 12; ebullets.push({ b: 1, x: al.x, y: al.y, vx: Math.cos(qa) * bspd * 0.75, vy: Math.sin(qa) * bspd * 0.75 }); }
+          } else {                                       // مروحة نحو المركبة تتّسع مع المستوى
+            for (var q2 = -1 - kf; q2 <= 1 + kf; q2++) { var fa = ang + q2 * 0.2; ebullets.push({ b: 1, x: al.x, y: al.y + al.r, vx: Math.cos(fa) * bspd, vy: Math.sin(fa) * bspd }); }
+          }
           tone(300, 120, 0.1, 'sawtooth', 0.04);
         }
       }
 
-    // اصطدام الطلقات بالأعداء
+      // الوحوش الكبيرة (ثم المتعرّجة لاحقًا) تطلق النار على المركبة
+      if (al.type !== 'boss' && al.y > 0 && al.y < H * 0.7 && ((al.type === 'big' && level >= 6) || (al.type === 'zig' && !al.sw && level >= 12))) {
+        al.shootT = (al.shootT === undefined ? 1 + Math.random() * 2 : al.shootT) - dt;
+        if (al.shootT <= 0) {
+          al.shootT = Math.max(1.3, 4 - level * 0.05) + Math.random();
+          var sa = Math.atan2(shipY - al.y, ship.x - al.x);
+          ebullets.push({ x: al.x, y: al.y + al.r, vx: Math.cos(sa) * 170 * S, vy: Math.sin(sa) * 170 * S });
+        }
+      }
+
+      // اصطدام الطلقات بالأعداء
       for (var b = bullets.length - 1; b >= 0; b--) {
         var dx = bullets[b].x - al.x, dy = bullets[b].y - al.y;
         if (dx * dx + dy * dy < (al.r + 4 * S) * (al.r + 4 * S)) {
@@ -405,7 +430,7 @@
       // اصطدام العدو بالمركبة
       var sx = al.x - ship.x, sy = al.y - shipY;
       if (ship.inv <= 0 && sx * sx + sy * sy < (al.r + 16 * S) * (al.r + 16 * S)) {
-        burst(al.x, al.y, al.c, 14); aliens.splice(a, 1); hurt();
+        burst(al.x, al.y, al.c, 14); if (al.type !== 'boss') aliens.splice(a, 1); hurt();
         if (!running) return; continue;
       }
       // إذا تجاوز العدو المركبة
@@ -423,7 +448,7 @@
         if (!running) return;
         continue;
       }
-      if (eb.y > H + 20 || eb.x < -20 || eb.x > W + 20) ebullets.splice(ei, 1);
+      if (eb.y > H + 20 || eb.y < -30 || eb.x < -20 || eb.x > W + 20) ebullets.splice(ei, 1);
     }
 
     // سقوط المكافآت وجمعها
