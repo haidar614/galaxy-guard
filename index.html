@@ -304,18 +304,6 @@
   }
   #settingsModal.fromPause #changeNameBtn { display: none; }
   #nameIcon:empty { display: none; }
-  /* متجر المركبات */
-  #walletRow { align-self: center; padding: 6px 16px; border-radius: 999px; font-weight: 700; color: #ffd166; background: rgba(255, 209, 102, .12); border: 1px solid rgba(255, 209, 102, .4); }
-  .coinDot { display: inline-block; width: 12px; height: 12px; margin-inline-start: 6px; vertical-align: -1px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff2b0, #ffb703); box-shadow: 0 0 8px rgba(255, 209, 102, .6); }
-  #shopMsg { min-height: 1.2em; font-size: .85rem; color: #ff8aa0; text-align: center; }
-  #shipList { display: flex; flex-direction: column; gap: 10px; }
-  .shipCard { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 10px; padding: 10px; text-align: right; border-radius: 16px; background: rgba(255,255,255,.06); border: 1px solid rgba(130, 200, 255, .22); }
-  .shipCard.sel { border-color: #5ee7ff; box-shadow: 0 0 14px rgba(94, 231, 255, .25); }
-  .gpanel .shipCard img { width: 56px; height: 56px; object-fit: contain; align-self: center; }
-  .shipInfo b { display: block; color: #dff4ff; }
-  .shipInfo small { display: block; opacity: .75; font-size: .78rem; line-height: 1.5; }
-  .shipCard button { white-space: nowrap; margin: 0; padding: 8px 14px; border-radius: 12px; font-size: .95rem; color: #04223d; border: 0; background: linear-gradient(180deg, #c4f5ff, #5ee7ff 50%, #2f8cff); }
-  .shipCard button:disabled { color: rgba(223, 244, 255, .6); background: rgba(255,255,255,.12); cursor: default; }
 
   /* نوافذ: المركبة / الإعدادات / حول اللعبة */
   .gmodal {
@@ -379,7 +367,6 @@
       </div>
       <div id="homeMenu">
         <button id="startBtn">ابدأ اللعب</button>
-        <button id="shipBtn" type="button">اختيار المركبة</button>
         <button id="leaderboardBtn">الترتيب العالمي</button>
         <button id="settingsBtn" type="button">الإعدادات</button>
         <button id="aboutBtn" type="button">حول اللعبة</button>
@@ -429,16 +416,6 @@
   </form>
 </div>
 
-<div id="shipModal" class="gmodal hidden" role="dialog" aria-modal="true" aria-labelledby="shipTitle">
-  <div class="gpanel">
-    <h2 id="shipTitle">اختيار المركبة</h2>
-    <div id="walletRow">رصيدك: <b id="walletVal">0</b><i class="coinDot"></i></div>
-    <div id="shopMsg" aria-live="polite"></div>
-    <div id="shipList"></div>
-    <button class="gclose" type="button" data-close>إغلاق</button>
-  </div>
-</div>
-
 <div id="settingsModal" class="gmodal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="gpanel">
     <h2 id="settingsTitle">الإعدادات</h2>
@@ -475,39 +452,6 @@
     });
   }
   function fwd(src, real) { $(src).addEventListener('click', function () { $(real).click(); syncSound(); }); }
-  function renderShips() {
-    $('walletVal').textContent = wallet;
-    var box = $('shipList'); box.innerHTML = '';
-    SHIPS.forEach(function (s) {
-      var have = owned.indexOf(s.id) >= 0, sel = shipId === s.id;
-      var card = document.createElement('div'); card.className = 'shipCard' + (sel ? ' sel' : '');
-      var img = document.createElement('img'); img.src = '1000555847.png'; img.alt = '';
-      img.style.filter = 'hue-rotate(' + s.hue + 'deg)'; img.onerror = function () { img.style.visibility = 'hidden'; };
-      var info = document.createElement('div'); info.className = 'shipInfo';
-      var nm = document.createElement('b'); nm.textContent = s.name;
-      var ds = document.createElement('small'); ds.textContent = s.desc;
-      info.appendChild(nm); info.appendChild(ds);
-      var btn = document.createElement('button'); btn.type = 'button';
-      btn.textContent = sel ? 'مختارة' : (have ? 'اختيار' : 'شراء ' + s.price);
-      btn.disabled = sel || (!have && wallet < s.price);
-      btn.addEventListener('click', async function () {
-        if (!have) {
-          if (wallet < s.price || !leaderboardReady) return;
-          btn.disabled = true; $('shopMsg').textContent = '';
-          try {
-            setWallet(await supabaseRequest('rpc/galaxy_buy_ship', { method: 'POST', body: JSON.stringify({ p_player_id: getPlayerId(), p_ship_id: s.id }) }));
-          } catch (e) { $('shopMsg').textContent = 'تعذّر الشراء، تأكد من الاتصال وحاول مجددًا.'; renderShips(); return; }
-        }
-        shipId = s.id; saveShop(); applyShip(); renderShips();
-      });
-      card.appendChild(img); card.appendChild(info); card.appendChild(btn); box.appendChild(card);
-    });
-  }
-  $('shipBtn').addEventListener('click', function () {
-    $('shopMsg').textContent = leaderboardReady ? '' : 'المتجر يحتاج اتصالًا بالخادم.';
-    renderShips(); showM('shipModal');
-    flushClaim().then(refreshWallet).then(renderShips);       // مزامنة الرصيد مع الخادم عند فتح المتجر
-  });
   $('aboutBtn').addEventListener('click', function () { showM('aboutModal'); });
   $('settingsBtn').addEventListener('click', function () { $('settingsModal').classList.remove('fromPause'); syncSound(); showM('settingsModal'); });
   $('pauseSettingsBtn').addEventListener('click', function () { $('settingsModal').classList.add('fromPause'); syncSound(); showM('settingsModal'); });
