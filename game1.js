@@ -2,7 +2,13 @@
   /* ---------- اللعبة ---------- */
   var W = 0, H = 0, S = 1;
   var best = 0;
-  try { best = parseInt(localStorage.getItem('galaxy_best') || '0', 10) || 0; } catch (e) {}
+  try {
+  if (localStorage.getItem('galaxy_score_v') !== '2') {
+    localStorage.removeItem('galaxy_best');
+    localStorage.setItem('galaxy_score_v', '2');
+  }
+  best = parseInt(localStorage.getItem('galaxy_best') || '0', 10) || 0;
+} catch (e) {}
   bestEl.textContent = 'الأفضل: ' + best;
 
   var running = false, paused = false, quitArmed = false, score = 0, lives = 3, spawnT = 0, fireT = 0, last = 0, clock = 0;
