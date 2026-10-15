@@ -173,10 +173,10 @@
   function drawShip() {
     var strong = ship.power > 0 && !(ship.power < 2 && Math.floor(clock * 10) % 2 === 0);   // يومض قبل انتهاء المفعول
     var own = strong && imgReady(powerShipImg);                 // هل توجد صورة للمركبة القوية؟
-    var img = own ? powerShipImg : shipImg;
+    var img = own ? powerShipImg : skinImg();
     if (!imgReady(img)) { drawShipVector(); return; }           // احتياط: الرسم القديم
     if (ship.inv > 0 && Math.floor(ship.inv * 12) % 2 === 0) return;
-    var sz = (strong ? 70 : 60) * S;
+    var sz = (strong ? 70 : 60) * S * ship.hit;
     var x = ship.x - sz / 2, y = ship.y - sz * 0.55;
     ctx.save();
     if (strong && !own) {                                       // مؤقتًا: هالة ذهبية بدل صورة المركبة القوية
@@ -249,6 +249,30 @@
       ctx.bezierCurveTo(7 * s, -10 * s, 12 * s, -1 * s, 0, 8 * s);
       ctx.fill();
     }
+  }
+
+  function drawCoins() {                                    // +N ذهبية ترتفع من مكان سقوط الوحش
+    if (!cfloats.length) return;
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 ' + 15 * S + 'px Tajawal, sans-serif';
+    ctx.fillStyle = '#ffd166'; ctx.shadowColor = '#ffb703'; ctx.shadowBlur = 6;
+    for (var i = 0; i < cfloats.length; i++) {
+      ctx.globalAlpha = Math.max(0, 1 - cfloats[i].t / 0.9);
+      ctx.fillText('+' + cfloats[i].n, cfloats[i].x, cfloats[i].y);
+    }
+    ctx.restore();
+  }
+  function drawCoinHud() {                                  // رصيد العملات أعلى يسار الشاشة أثناء اللعب
+    if (!running) return;
+    ctx.save();
+    ctx.fillStyle = '#ffb703'; ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(18 * S, 20 * S, 8 * S, 0, 6.283); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#ffe58a';
+    ctx.beginPath(); ctx.arc(18 * S, 20 * S, 4.6 * S, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#ffd166'; ctx.font = '700 ' + 17 * S + 'px Tajawal, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(wallet + runCoins + (pendingClaim ? pendingClaim.coins : 0)), 32 * S, 21 * S);
+    ctx.restore();
   }
 
   function drawDrops() {
@@ -360,8 +384,9 @@
       ctx.restore();
     }
     ctx.shadowBlur = 0;
-    drawDrops();
+    drawDrops(); drawCoins();
     if (running || lives > 0) drawShip();
+    drawCoinHud();
     drawShield();
     for (var p = 0; p < parts.length; p++) {
       var q = parts[p]; ctx.globalAlpha = 1 - q.t / q.life; ctx.fillStyle = q.c;
@@ -457,7 +482,7 @@
   });
   muteBtn.addEventListener('click', function () {
     muted = !muted;
-    muteBtn.textContent = muted ? '🔇' : '🔊';
+    muteBtn.textContent = ''; muteBtn.classList.toggle('off', muted);
     try { localStorage.setItem('galaxy_muted', muted ? '1' : '0'); } catch (e) {}
     ensureAudio();
     if (sfxBus && audioCtx) sfxBus.gain.setTargetAtTime(muted ? 0 : 0.78, audioCtx.currentTime, 0.025);
@@ -472,7 +497,7 @@
   });
   musicBtn.addEventListener('click', function () {
     musicMuted = !musicMuted;
-    musicBtn.textContent = musicMuted ? '🎵̸' : '🎵';
+    musicBtn.textContent = ''; musicBtn.classList.toggle('off', musicMuted);
     try { localStorage.setItem('galaxy_music_off', musicMuted ? '1' : '0'); } catch (e) {}
     ensureAudio();
     if (musicMuted) {
