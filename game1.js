@@ -329,7 +329,7 @@
       spawn();
       // كل خمسة مستويات تصبح موجات الأعداء أسرع وأكثر كثافة.
       var tier = difficultyTier();
-      spawnT = Math.max(0.22, Math.pow(0.95, level - 1));   // يظهرون أسرع مع كل مستوى
+      spawnT = Math.max(0.22, Math.pow(0.95, level - 1)) * (aliens.some(function (q) { return q.type === 'boss'; }) ? 2 : 1);   // أثناء الزعيم يظهر نصف العدد   // يظهرون أسرع مع كل مستوى
     }
 
     swarmT -= dt;
@@ -388,13 +388,14 @@
         if (al.shootT <= 0 && al.y > 0) {
           al.shootT = Math.max(0.5, 1.5 - level * 0.015) * (al.hp < al.max * 0.5 ? 0.7 : 1);   // يغضب تحت نصف صحته
           var ang = Math.atan2(shipY - al.y, ship.x - al.x);
-          var bspd = (190 + Math.min(150, level * 2)) * S, kf = Math.min(3, Math.floor(level / 10));
+          var bspd = (190 + Math.min(150, level * 2)) * S, kf = Math.min(2, Math.floor(level / 15));
           al.vol = (al.vol || 0) + 1;
-          if (al.vol % 4 === 0) {                        // كل دفعة رابعة: حلقة نار كاملة
+          if (al.vol % 6 === 0) {                        // كل 6 دفعات: حلقة نار بفتحة تعدّي منها
             var ph0 = Math.random() * 6.283;
-            for (var q = 0; q < 12; q++) { var qa = ph0 + q * 6.283 / 12; ebullets.push({ b: 1, x: al.x, y: al.y, vx: Math.cos(qa) * bspd * 0.75, vy: Math.sin(qa) * bspd * 0.75 }); }
+            var gc = ang + (Math.random() - 0.5) * 1.2;
+            for (var q = 0; q < 14; q++) { var qa = ph0 + q * 6.283 / 14; if (Math.abs(Math.atan2(Math.sin(qa - gc), Math.cos(qa - gc))) < 0.5) continue; ebullets.push({ b: 1, x: al.x, y: al.y, vx: Math.cos(qa) * bspd * 0.75, vy: Math.sin(qa) * bspd * 0.75 }); }
           } else {                                       // مروحة نحو المركبة تتّسع مع المستوى
-            for (var q2 = -1 - kf; q2 <= 1 + kf; q2++) { var fa = ang + q2 * 0.2; ebullets.push({ b: 1, x: al.x, y: al.y + al.r, vx: Math.cos(fa) * bspd, vy: Math.sin(fa) * bspd }); }
+            for (var q2 = -1 - kf; q2 <= 1 + kf; q2++) { var fa = ang + q2 * 0.28; ebullets.push({ b: 1, x: al.x, y: al.y + al.r, vx: Math.cos(fa) * bspd, vy: Math.sin(fa) * bspd }); }
           }
           tone(300, 120, 0.1, 'sawtooth', 0.04);
         }
@@ -473,5 +474,5 @@
     for (var p = parts.length - 1; p >= 0; p--) {
       var q = parts[p]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt;
       if (q.t > q.life) parts.splice(p, 1);
-    }
-    }
+    }   
+  }
