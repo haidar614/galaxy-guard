@@ -147,6 +147,21 @@
   var FLAME_TOP = 0.775;
   var FLAME_BANDS = [[0.25, 0.405], [0.405, 0.595], [0.595, 0.75]];
 
+  // أحجام صور الأسلحة (عرض، ارتفاع) بالنسبة لـ S
+  var BULLET_SIZE = { laser: [10.5, 70], pierce: [16, 69], fan: [13, 39] };
+
+  // مركبة بصورة خاصة: تُرسم بنسبتها الأصلية مع وميض خفيف في منطقة المحركات
+  function drawCustomSprite(img, x, y, w, h) {
+    ctx.drawImage(img, x, y, w, h);
+    var fy = 0.62, k = 1 + 0.14 * Math.sin(clock * 24) + 0.06 * Math.sin(clock * 41);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(clock * 33);
+    ctx.drawImage(img, 0, img.naturalHeight * fy, img.naturalWidth, img.naturalHeight * (1 - fy),
+                  x, y + h * fy, w, h * (1 - fy) * k);
+    ctx.restore();
+  }
+
   function drawShipSprite(img, x, y, sz) {
     var iw = img.naturalWidth, ih = img.naturalHeight, fy = FLAME_TOP, b;
     ctx.save();                                      // 1) الجسم بدون ألسنة اللهب
@@ -178,18 +193,21 @@
     if (ship.inv > 0 && Math.floor(ship.inv * 12) % 2 === 0) return;
     var sz = (strong ? 70 : 60) * S;
     var x = ship.x - sz / 2, y = ship.y - sz * 0.55;
+    var custom = !!(ship.st && ship.st.img === img);              // مركبة بصورة خاصة (غير الزرقاء)
+    var dw = sz, dh = sz, dx = x, dy = y;
+    if (custom) { dw = sz * 1.3; dh = dw * img.naturalHeight / img.naturalWidth; dx = ship.x - dw / 2; dy = ship.y - sz * 0.05 - dh / 2; }
     ctx.save();
     if (strong && !own) {                                       // مؤقتًا: هالة ذهبية بدل صورة المركبة القوية
       ctx.shadowColor = '#ffd166';
       ctx.shadowBlur = 16 + 6 * Math.sin(clock * 8);
     }
-    drawShipSprite(img, x, y, sz);
+    if (custom) drawCustomSprite(img, dx, dy, dw, dh); else drawShipSprite(img, x, y, sz);
     if (ship.flash > 0) {                                       // وميض وحلقة عند الالتقاط
       var k = Math.min(1, ship.flash / 0.6);
       ctx.shadowBlur = 0;
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.8 * k;
-      ctx.drawImage(img, x, y, sz, sz);
+      ctx.drawImage(img, dx, dy, dw, dh);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = k;
       ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 3 * S;
@@ -332,6 +350,13 @@
     ctx.shadowColor = '#fff27a'; ctx.shadowBlur = 8;
     for (var i = 0; i < bullets.length; i++) {
       var bl = bullets[i];
+      if (bl.art && imgReady(bl.art)) {       // أسلحة المركبات الخاصة بصورها: ليزر أحمر / رصاص بنفسجي / رصاصة برتقالية
+        var bs = BULLET_SIZE[bl.kind] || BULLET_SIZE.pierce;
+        ctx.save(); ctx.shadowBlur = 0; ctx.translate(bl.x, bl.y);
+        ctx.rotate(Math.atan2(bl.vx || 0, bl.v));
+        ctx.drawImage(bl.art, -bs[0] / 2 * S, -bs[1] / 2 * S, bs[0] * S, bs[1] * S);
+        ctx.restore(); continue;
+      }
       if (bl.kind) {                          // أشكال أسلحة المركبات المميّزة
         ctx.save(); ctx.translate(bl.x, bl.y);
         if (bl.kind === 'laser') {
@@ -532,4 +557,3 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
-        
