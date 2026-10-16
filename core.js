@@ -149,7 +149,7 @@
       'جارٍ تحميل النتائج...' : 'أضف Project URL والمفتاح العام في إعدادات Supabase داخل الملف أولاً.';
     leaderboardRows.innerHTML = '';
     if (!leaderboardReady) return;
-    supabaseRequest('leaderboard?select=player_name,score,level&order=score.desc,updated_at.asc&limit=10')
+    supabaseRequest('leaderboard?select=player_name,score,level&order=score.desc,updated_at.asc&limit=20')
       .then(function (rows) {
         leaderboardRows.innerHTML = '';
         if (!rows || !rows.length) {
