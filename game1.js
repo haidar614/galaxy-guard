@@ -32,6 +32,99 @@
   var monsterBulletImg = loadImg('monster-bullet.png');    // رصاص الوحوش
   var bossBulletImg = loadImg('boss-bullet.png');          // طلقة الزعيم
   var shipImg = loadImg('1000555847.png');                 // المركبة الزرقاء
+
+  // ---------- المركبات: لكل مركبة تقييم من 1 إلى 5 لقوة النيران والسرعة والدرع ----------
+  var SHIPS = [      // لكل مركبة سلاح مميّز؛ القلوب والسرعة والدرع واحدة لكل المركبات
+    { id: 'guard',     weapon_id: 'balanced', name: 'حارس المجرّة', hue: 0,   fire: 0.20, weapon: 'رصاص متوازن',
+      desc: 'عدد الرصاصات يزيد من 1 إلى 3 كلما زادت نقاطك.', plus: 'سلاح متوازن ومناسب لكل الحالات.', minus: 'ما فيه ميزة خاصة.' },
+    { id: 'hunter',    weapon_id: 'laser',    name: 'المطارد',      hue: 160, fire: 0.10, weapon: 'ليزر سريع',
+      desc: 'شعاع رفيع بخط واحد، أسرع إطلاق وأسرع رصاصة.', plus: 'سرعة إطلاق عالية وتصويب دقيق.', minus: 'خط واحد فقط، فبيصعب مع الأسراب العريضة.' },
+    { id: 'spread',    weapon_id: 'fan',      name: 'المشتّت',      hue: 80,  fire: 0.34, weapon: 'مروحة رصاصات',
+      desc: 'خمس رصاصات بتنتشر بشكل مروحة.', plus: 'بتغطي مساحة واسعة وبتضرب أكتر من وحش.', minus: 'الرصاص موزّع، وإطلاقها أبطأ.' },
+    { id: 'destroyer', weapon_id: 'pierce',   name: 'المدمّر',      hue: 270, fire: 0.50, weapon: 'رصاصة خارقة',
+      desc: 'رصاصة قوية بتخترق الوحوش وبتضرب اللي وراها (لحد ثلاثة).', plus: 'ممتازة ضد الأسراب والوحوش المصطفة.', minus: 'رصاصة وحدة وإطلاقها بطيء، والزعيم بيوقفها.' },
+    { id: 'falcon',    weapon_id: 'homing',   name: 'الصقر',        hue: 200, fire: 0.38, weapon: 'صواريخ موجّهة',
+      desc: 'صاروخان بيلاحقوا أقرب وحش أمامهم.', plus: 'ما بتخطئ الهدف حتى لو تحرّك.', minus: 'بطيئة نسبيًا وضررها عادي.' },
+    { id: 'tank',      weapon_id: 'heavy',    name: 'الدرع الثقيل', hue: 120, fire: 0.50, weapon: 'رصاصتان ثقيلتان',
+      desc: 'رصاصتان بضرر مضاعف، وكل وحدة بتصدّ رصاصتين من رصاص الأعداء.', plus: 'بتقتل الوحوش الكبيرة بسرعة وبتحميك من الرصاص.', minus: 'إطلاقها بطيء.' }
+  ];
+  var maxLives = 3;
+  var FIRE_STEPS = [0, 100, 250, 500, 800];   // نقاط الوصول لرصاصة، 2، 3، 4، 5 رصاصات للمركبة العادية (كبّر الأرقام لتصعّب)
+  var PRICES = { guard: 0, hunter: 500, spread: 1000, destroyer: 3500, falcon: 2500, tank: 1600 };   // بالعملات — لازم تطابق جدول galaxy_ships بالخادم
+  SHIPS.forEach(function (s) { s.price = PRICES[s.id]; });
+  var shipId = 'guard', skins = {};
+  // الرصيد والمركبات المملوكة محفوظان على الخادم (Supabase) فقط؛ محليًا نحفظ اسم المركبة المختارة
+  var savedShip = 'guard', owned = ['guard'], wallet = 0, runCoins = 0, cfloats = [], runToken = null, runSeq = 0, pendingClaims = [];
+  try { var svd = localStorage.getItem('galaxy_ship'); if (svd) savedShip = svd; } catch (e) {}
+  function saveShop() { savedShip = shipId; try { localStorage.setItem('galaxy_ship', shipId); } catch (e) {} }
+  function galaxyRpc(name, body) { return supabaseRequest('rpc/' + name, { method: 'POST', body: JSON.stringify(body) }); }
+  function setWallet(r) {
+    wallet = r.coins; owned = r.ships || ['guard'];
+    shipId = owned.indexOf(savedShip) >= 0 ? savedShip : 'guard';
+    applyShip();
+  }
+  function refreshWallet() {
+    if (!leaderboardReady) return Promise.resolve();
+    return galaxyRpc('galaxy_get_wallet', { p_player_id: getPlayerId() }).then(setWallet).catch(function (e) { console.warn('wallet load failed', e); });
+  }
+  function startRunToken() {                                   // رمز الجولة: يسجّل الخادم وقت بدايتها
+    var seq = ++runSeq; runToken = null;
+    if (!leaderboardReady) return;
+    galaxyRpc('galaxy_start_run', { p_player_id: getPlayerId() })
+      .then(function (t) { if (seq === runSeq && typeof t === 'string') runToken = t; })
+      .catch(function (e) { console.warn('start run failed', e); });
+  }
+  function flushClaims() {                                     // إرسال عملات الجولات المنتهية (وإعادة المحاولة عند فشل الاتصال)
+    if (!pendingClaims.length || !leaderboardReady) return Promise.resolve();
+    var pc = pendingClaims[0];
+    return galaxyRpc('galaxy_claim_coins', { p_player_id: getPlayerId(), p_token: pc.token, p_score: pc.score, p_coins: pc.coins })
+      .then(function (r) { pendingClaims.shift(); setWallet(r); return flushClaims(); })
+      .catch(function (e) { console.warn('claim failed', e); });
+  }
+  function claimRun() {
+    if (runCoins && runToken) pendingClaims.push({ token: runToken, score: Math.floor(score), coins: runCoins });
+    runCoins = 0; runToken = null;
+    flushClaims();
+  }
+  function awardCoins(al) {                                    // تُضاف العملات تلقائيًا عند إسقاط الوحش
+    var n = al.type === 'boss' ? 14 : al.type === 'big' ? 3 : (Math.random() < (al.type === 'zig' ? 0.45 : 0.3) ? 1 : 0);
+    if (!n) return;
+    runCoins += n;
+    cfloats.push({ x: al.x, y: al.y, n: n, t: 0 });
+    tone(988, 1480, 0.07, 'sine', 0.04);
+  }
+  function curShip() { for (var i = 0; i < SHIPS.length; i++) if (SHIPS[i].id === shipId) return SHIPS[i]; return SHIPS[0]; }
+  function applyShip() {
+    var st = curShip();
+    ship.st = st; ship.fireInt = st.fire; ship.stepMul = 1; ship.invT = 1.4; ship.shieldMul = 1;
+    var hs = document.getElementById('heroShip');                 // صورة الشاشة الرئيسية تتبع المركبة المختارة
+    if (hs) hs.style.filter = 'hue-rotate(' + st.hue + 'deg) drop-shadow(0 6px 14px rgba(40, 140, 255, .6))';
+  }
+  // تلوين مؤقت لصورة المركبة حتى تجهّز صورًا خاصة بكل مركبة
+  function hueCanvas(src, deg) {
+    var w = src.naturalWidth, h = src.naturalHeight, c = document.createElement('canvas');
+    c.width = w; c.height = h; c.naturalWidth = w; c.naturalHeight = h; c.complete = true;
+    var x = c.getContext('2d'); x.drawImage(src, 0, 0);
+    try {
+      var d = x.getImageData(0, 0, w, h), p = d.data, a = deg * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
+      var m = [0.213 + cs * 0.787 - sn * 0.213, 0.715 - cs * 0.715 - sn * 0.715, 0.072 - cs * 0.072 + sn * 0.928,
+               0.213 - cs * 0.213 + sn * 0.143, 0.715 + cs * 0.285 + sn * 0.140, 0.072 - cs * 0.072 - sn * 0.283,
+               0.213 - cs * 0.213 - sn * 0.787, 0.715 - cs * 0.715 + sn * 0.715, 0.072 + cs * 0.928 + sn * 0.072];
+      for (var i = 0; i < p.length; i += 4) {
+        var r = p[i], g = p[i + 1], b = p[i + 2];
+        p[i] = m[0] * r + m[1] * g + m[2] * b; p[i + 1] = m[3] * r + m[4] * g + m[5] * b; p[i + 2] = m[6] * r + m[7] * g + m[8] * b;
+      }
+      x.putImageData(d, 0, 0);
+    } catch (e) {}
+    return c;
+  }
+  function skinImg() {
+    var hu = ship.st ? ship.st.hue : 0;
+    if (!hu || !imgReady(shipImg)) return shipImg;
+    return skins[hu] || (skins[hu] = hueCanvas(shipImg, hu));
+  }
+  applyShip();
+  refreshWallet();     // تحميل الرصيد والمركبات من الخادم
   // المركبة القوية: الصورة تأتي من ملف ship-img.js، وإن لم يوجد يعود للهالة الذهبية
   var powerShipImg = loadImg(typeof POWER_SHIP_SRC === 'string' ? POWER_SHIP_SRC : 'ship2.png');
   var powerBulletImg = loadImg('data:image/webp;base64,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');   // شكل الطلقة القوية
@@ -61,7 +154,7 @@
 
   function hearts() {
     var s = '';
-    for (var i = 0; i < 3; i++) s += i < lives ? '♥' : '♡';
+    for (var i = 0; i < maxLives; i++) s += i < lives ? '♥' : '♡';
     livesEl.textContent = s;
   }
 
@@ -118,7 +211,7 @@
   }
 
   function reset() {
-    score = 0; lives = 3; level = 1;
+    applyShip(); score = 0; lives = maxLives; level = 1; cfloats = []; runCoins = 0; startRunToken();
     aliens = []; bullets = []; parts = []; ebullets = []; drops = [];
     spawnT = 0.5; fireT = 0; clock = 0;
     scoreEl.textContent = '0';
@@ -161,6 +254,8 @@
     ovTitle.textContent = withdrew === true ? 'انسحبت من المعركة' : 'سقطت المركبة';
     sfx.over();
     startBtn.textContent = 'قاتل من جديد';
+    if (runCoins && runToken) ovText.textContent += ' جمعت ' + runCoins + ' عملة.';
+    claimRun();
     overlay.classList.remove('hidden'); overlay.classList.add('over');
     startBtn.focus();
     submitLeaderboardScore(score, level);
@@ -187,9 +282,9 @@
     for (var i = 0; i < n; i++) {
       if (Math.random() < chance && drops.length < 3) {
         var rnd = Math.random();
-        var kind = rnd < 0.30 ? 'shield' : (rnd < 0.60 ? 'multi' : (rnd < 0.80 ? 'power' : 'heart'));
+        var kind = rnd < 0.40 ? 'shield' : (rnd < 0.80 ? 'multi' : 'heart');   // المركبة القوية صارت مكافأة الزعيم فقط
         if (al.type === 'boss' && i === 0) kind = 'power';   // الزعيم يترك المركبة القوية دائمًا
-        if (kind === 'heart' && lives >= 3) kind = 'shield';   // القلب يظهر فقط إذا خسرت قلبًا
+        if (kind === 'heart' && lives >= maxLives) kind = 'shield';   // القلب يظهر فقط إذا خسرت قلبًا
         drops.push({ kind: kind, x: al.x + (i - 0.5 * (n - 1)) * 44 * S, y: al.y, ph: Math.random() * 6, vx: (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 55) * S });
       }
     }
@@ -199,7 +294,7 @@
     var colors = { shield: '#5ee7ff', multi: '#fff27a', heart: '#ff5c7a', power: '#ffd166' };
     burst(dp.x, dp.y, colors[dp.kind], 14);
     if (dp.kind === 'shield') {
-      ship.shield = SHIELD_TIME;
+      ship.shield = SHIELD_TIME * ship.shieldMul;
       powerToast('درع!');
       tone(520, 880, 0.18, 'sine', 0.06); tone(880, 1320, 0.18, 'sine', 0.05, 0.1);
     } else if (dp.kind === 'power') {      // مركبة أقوى بطلقات أقوى لفترة قصيرة
@@ -213,7 +308,7 @@
       powerToast('طلقات إضافية!');
       tone(440, 880, 0.12, 'square', 0.04); tone(660, 1320, 0.16, 'square', 0.04, 0.1);
     } else {
-      if (lives < 3) { lives++; hearts(); powerToast('قلب إضافي!'); }
+      if (lives < maxLives) { lives++; hearts(); powerToast('قلب إضافي!'); }
       else { score += 5; scoreEl.textContent = score; checkLevel(); powerToast('+5'); }
       tone(660, 990, 0.2, 'triangle', 0.06); tone(990, 1320, 0.2, 'triangle', 0.05, 0.12);
     }
@@ -226,7 +321,7 @@
       return;
     }
     lives--; hearts();
-    ship.inv = 1.4;
+    ship.inv = ship.invT;
     sfx.hurt();
     burst(ship.x, ship.y, '#ff5c7a', 22);
     if (lives <= 0) end();
@@ -310,14 +405,28 @@
 
   function fire() {
     sfx.shoot();
-    var fireLevel = Math.min(2, Math.floor(score / 30));
-    var strong = ship.power > 0;                     // المركبة القوية: 3 طلقات وضرر مضاعف
-    if (strong) fireLevel = 2;
-    var offs = fireLevel === 0 ? [0] : fireLevel === 1 ? [-9, 9] : [-14, 0, 14];
-    var vxs = null;
+    var w = ship.st.weapon_id, strong = ship.power > 0;      // strong = المركبة القوية: ضرر إضافي
+    var offs, vxs = null, dmg = 1, v = 560 * S, kind = '', homing = false, pierce = 0, block = 0;
+    // strong = المركبة القوية (مكافأة الزعيم): ضرر إضافي + تقوية خاصة لكل سلاح
+    if (w === 'laser') { offs = strong ? [-6, 6] : [0]; v = 950 * S; kind = 'laser'; }
+    else if (w === 'fan') {
+      if (strong) { offs = [-24, -16, -8, 0, 8, 16, 24]; vxs = [-120, -80, -40, 0, 40, 80, 120]; }
+      else { offs = [-16, -8, 0, 8, 16]; vxs = [-90, -45, 0, 45, 90]; }
+    }
+    else if (w === 'pierce') { offs = [0]; dmg = 2; v = 620 * S; kind = 'pierce'; pierce = strong ? 5 : 3; }
+    else if (w === 'homing') { offs = strong ? [-18, -6, 6, 18] : [-10, 10]; v = 430 * S; kind = 'missile'; homing = true; }
+    else if (w === 'heavy') { offs = [-10, 10]; dmg = 2; v = 480 * S; kind = 'heavy'; block = strong ? 4 : 2; }
+    else {                                                   // السلاح المتوازن: يزداد عدد الرصاصات مع النقاط
+      var fireLevel = 0;
+      for (var fl = 1; fl < FIRE_STEPS.length; fl++) if (score >= FIRE_STEPS[fl]) fireLevel = fl;
+      if (strong) fireLevel = Math.min(4, Math.max(2, fireLevel + 1));   // المركبة القوية: مستوى إضافي (3 رصاصات على الأقل)
+      offs = [[0], [-9, 9], [-14, 0, 14], [-20, -7, 7, 20], [-24, -12, 0, 12, 24]][fireLevel];
+      if (fireLevel === 4) vxs = [-25, -12, 0, 12, 25];              // المستوى الأعلى: خمس رصاصات بانتشار خفيف
+    }
     if (ship.multi > 0) { offs = [-18, -9, 0, 9, 18]; vxs = [-70, -35, 0, 35, 70]; }   // مكافأة الطلقات الإضافية
     for (var i = 0; i < offs.length; i++) {
-      bullets.push({ x: ship.x + offs[i] * S, y: ship.y - 16 * S, v: 560 * S, vx: vxs ? vxs[i] * S : 0, dmg: strong ? 2 : 1 });
+      bullets.push({ x: ship.x + offs[i] * S, y: ship.y - 16 * S, v: v, vx: vxs ? vxs[i] * S : 0, dmg: strong ? dmg + 1 : dmg,
+                     homing: homing, kind: kind, pierce: pierce, hitL: pierce ? [] : null, block: block });
     }
   }
 
@@ -330,12 +439,13 @@
     if (keys.ArrowUp) ship.ty -= sp;
     if (keys.ArrowDown) ship.ty += sp;
     ship.ty = Math.max(H * 0.25, Math.min(H - 50 * S, ship.ty));
-    ship.x += (ship.target - ship.x) * Math.min(1, dt * 18);
-    ship.y += (ship.ty - ship.y) * Math.min(1, dt * 18);
+    var maxStep = 900 * S * ship.stepMul * dt;   // أقصى مسافة تقطعها المركبة بالإطار (السرعة)
+    ship.x += Math.max(-maxStep, Math.min(maxStep, (ship.target - ship.x) * Math.min(1, dt * 18)));
+    ship.y += Math.max(-maxStep, Math.min(maxStep, (ship.ty - ship.y) * Math.min(1, dt * 18)));
     if (ship.inv > 0) ship.inv -= dt;
 
     fireT -= dt;
-    if (fireT <= 0) { fire(); fireT = ship.power > 0 ? 0.14 : 0.2; }
+    if (fireT <= 0) { fire(); fireT = ship.power > 0 ? ship.fireInt * 0.7 : ship.fireInt; }
 
     spawnT -= dt;
     if (spawnT <= 0) {
@@ -352,6 +462,14 @@
     }
 
     for (var i = bullets.length - 1; i >= 0; i--) {
+      if (bullets[i].homing) {                       // الصاروخ الموجّه يلاحق أقرب وحش أمامه
+        var hb = bullets[i], hT = null, hBest = 1e12;
+        for (var hk = 0; hk < aliens.length; hk++) {
+          var hx = aliens[hk].x - hb.x, hy = hb.y - aliens[hk].y;
+          if (hy > 0 && aliens[hk].y > 0) { var hd = hx * hx + hy * hy * 0.5; if (hd < hBest) { hBest = hd; hT = aliens[hk]; } }
+        }
+        if (hT) { var hWant = Math.max(-300 * S, Math.min(300 * S, (hT.x - hb.x) * 4)); hb.vx += (hWant - hb.vx) * Math.min(1, 7 * dt); }
+      }
       bullets[i].y -= bullets[i].v * dt;
       bullets[i].x += (bullets[i].vx || 0) * dt;
       if (bullets[i].y < -10 || bullets[i].x < -10 || bullets[i].x > W + 10) bullets.splice(i, 1);
@@ -428,7 +546,12 @@
       for (var b = bullets.length - 1; b >= 0; b--) {
         var dx = bullets[b].x - al.x, dy = bullets[b].y - al.y;
         if (dx * dx + dy * dy < (al.r + 4 * S) * (al.r + 4 * S)) {
-          var dmg = bullets[b].dmg || 1; bullets.splice(b, 1); al.hp -= dmg; al.flash = 0.08; sfx.hit();
+          var bb = bullets[b], dmg = bb.dmg || 1;
+          if (bb.pierce && al.type !== 'boss') {                 // الرصاصة الخارقة تكمل طريقها بعد إصابة الوحش
+            if (bb.hitL.indexOf(al) >= 0) continue;
+            bb.hitL.push(al); if (--bb.pierce <= 0) bullets.splice(b, 1);
+          } else bullets.splice(b, 1);
+          al.hp -= dmg; al.flash = 0.08; sfx.hit();
           burst(al.x, al.y, al.c, 3);
         }
       }
@@ -439,6 +562,7 @@
         sfx.boom(al.type === 'big' || al.type === 'boss', al.type === 'boss');
         burst(al.x, al.y, al.c, 16);
         maybeDrop(al);
+        awardCoins(al);
         aliens.splice(a, 1); continue;
       }
       // اصطدام العدو بالمركبة
@@ -456,6 +580,19 @@
     for (var ei = ebullets.length - 1; ei >= 0; ei--) {
       var eb = ebullets[ei];
       eb.x += eb.vx * dt; eb.y += eb.vy * dt;
+      var blocked = false;                                       // رصاص الدرع الثقيل يصدّ رصاص الأعداء
+      for (var hq = bullets.length - 1; hq >= 0; hq--) {
+        var hbu = bullets[hq];
+        if (hbu.block > 0) {
+          var hbx = hbu.x - eb.x, hby = hbu.y - eb.y;
+          if (hbx * hbx + hby * hby < (14 * S) * (14 * S)) {
+            burst(eb.x, eb.y, '#ffb347', 4);
+            if (--hbu.block <= 0) bullets.splice(hq, 1);
+            blocked = true; break;
+          }
+        }
+      }
+      if (blocked) { ebullets.splice(ei, 1); continue; }
       var ex = eb.x - ship.x, ey = eb.y - shipY;
       if (ship.inv <= 0 && ex * ex + ey * ey < (22 * S) * (22 * S)) {
         ebullets.splice(ei, 1); hurt();
@@ -470,6 +607,10 @@
     if (ship.multi > 0) ship.multi -= dt;
     if (ship.power > 0) ship.power -= dt;
     if (ship.flash > 0) ship.flash -= dt;
+    for (var fi = cfloats.length - 1; fi >= 0; fi--) {        // أرقام العملات الطافية
+      cfloats[fi].t += dt; cfloats[fi].y -= 42 * S * dt;
+      if (cfloats[fi].t > 0.9) cfloats.splice(fi, 1);
+    }
     for (var di = drops.length - 1; di >= 0; di--) {
       var dp = drops[di];
       dp.y += 95 * S * dt;
