@@ -28,7 +28,7 @@
 
   // ---------- صور المركبة والوحوش (ضعها في نفس مجلد index.html) ----------
   function loadImg(src) { var im = new Image(); im.src = src; return im; }
-  function imgReady(im) { return im.complete && im.naturalWidth > 0; }
+  function imgReady(im) { return !!im && im.complete && im.naturalWidth > 0; }
   var monsterBulletImg = loadImg('monster-bullet.png');    // رصاص الوحوش
   var bossBulletImg = loadImg('boss-bullet.png');          // طلقة الزعيم
   var shipImg = loadImg('1000555847.png');                 // المركبة الأساسية
@@ -137,7 +137,7 @@
   function skinImg() {
     // استخدم الرسم الأصلي للمركبات الجديدة، دون تغيير ألوانه.
     var custom = shipImages[shipId];
-    if (imgReady(custom)) return custom;
+    if (custom && imgReady(custom)) return custom;
     var hu = ship.st ? ship.st.hue : 0;
     if (!hu || !imgReady(shipImg)) return shipImg;
     return skins[hu] || (skins[hu] = hueCanvas(shipImg, hu));
@@ -649,4 +649,4 @@
       var q = parts[p]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt;
       if (q.t > q.life) parts.splice(p, 1);
     }
-    }
+           }
