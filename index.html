@@ -2,6 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
   <link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0a0b24">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>حارس المجرّة</title>
@@ -304,6 +306,37 @@
   }
   #settingsModal.fromPause #changeNameBtn { display: none; }
   #nameIcon:empty { display: none; }
+  /* اختيار المركبة: عرض مجسّم يُقلَّب يمينًا ويسارًا */
+  .shipPanel { width: min(100%, 400px); gap: 10px; }
+  #cf { position: relative; height: 236px; overflow: hidden; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
+  #cfGlow { position: absolute; left: 50%; top: 46%; width: 230px; height: 230px; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(70, 160, 255, .38), rgba(70, 160, 255, 0) 68%); pointer-events: none; }
+  #cfPad { position: absolute; left: 50%; bottom: 6px; width: 210px; height: 34px; transform: translateX(-50%); border-radius: 50%; border: 1px solid rgba(150, 215, 255, .42); background: radial-gradient(ellipse at 50% 35%, rgba(170, 225, 255, .40), rgba(60, 120, 255, .12) 62%, transparent 74%); box-shadow: 0 0 22px rgba(70, 160, 255, .38), inset 0 0 14px rgba(160, 220, 255, .22); pointer-events: none; }
+  #cfTrack { position: absolute; inset: 0; perspective: 800px; }
+  .cfItem { position: absolute; left: 50%; top: 57%; width: 140px; height: 150px; margin: -75px 0 0 -70px; transform-style: preserve-3d; will-change: transform, opacity; }
+  #cfTrack:not(.drag) .cfItem { transition: transform .38s cubic-bezier(.2, .8, .2, 1), opacity .38s ease; }
+  .cfItem img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+  .cfItem.cur img { animation: cfSway 5s ease-in-out infinite; }
+  @keyframes cfSway { 0%, 100% { transform: rotateY(-14deg) translateY(0); } 50% { transform: rotateY(14deg) translateY(-8px); } }
+  #cfBar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .cfNav { flex: 0 0 auto; width: 40px; height: 40px; margin: 0; padding: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(130, 200, 255, .14); border: 1px solid rgba(130, 200, 255, .4); }
+  .cfNav::before { content: ""; width: 10px; height: 10px; border: solid #bff3ff; border-width: 0 0 3px 3px; }
+  #cfNext::before { transform: rotate(45deg); margin-left: 4px; }
+  #cfPrev::before { transform: rotate(-135deg); margin-right: 4px; }
+  #walletRow { align-self: center; padding: 5px 16px; border-radius: 999px; font-weight: 700; color: #ffd166; background: rgba(255, 209, 102, .12); border: 1px solid rgba(255, 209, 102, .4); }
+  .coinDot { display: inline-block; width: 12px; height: 12px; margin-inline-start: 6px; vertical-align: -1px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff2b0, #ffb703); box-shadow: 0 0 8px rgba(255, 209, 102, .6); }
+  #cfPrice { display: block; font-size: .86rem; color: #ffd166; margin-top: 2px; }
+  #shopMsg { min-height: 1.2em; font-size: .85rem; color: #ff8aa0; text-align: center; }
+  .cfItem.locked img { opacity: .5; }
+  #cfDots { display: flex; justify-content: center; gap: 7px; flex: 1; }
+  #cfDots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.2); transition: background .2s, transform .2s; }
+  #cfDots i.on { background: #5ee7ff; transform: scale(1.35); box-shadow: 0 0 8px rgba(94, 231, 255, .7); }
+  #cfInfo { text-align: center; }
+  #cfName { display: block; font-size: 1.2rem; color: #dff4ff; }
+  #cfWeapon { display: block; font-size: .86rem; color: #8fe3ff; margin-top: 2px; }
+  #cfDesc { display: block; opacity: .8; font-size: .84rem; line-height: 1.6; margin: 2px 0 6px; }
+  #cfPick { margin: 0; padding: 11px 14px; border-radius: 14px; font-size: 1.05rem; color: #04223d; border: 0; background: linear-gradient(180deg, #c4f5ff, #5ee7ff 50%, #2f8cff); }
+  #cfPick:disabled { color: rgba(223, 244, 255, .6); background: rgba(255,255,255,.12); }
+  @media (prefers-reduced-motion: reduce) { .cfItem.cur img { animation: none; } }
 
   /* نوافذ: المركبة / الإعدادات / حول اللعبة */
   .gmodal {
@@ -367,6 +400,7 @@
       </div>
       <div id="homeMenu">
         <button id="startBtn">ابدأ اللعب</button>
+        <button id="shipBtn" type="button">اختيار المركبة</button>
         <button id="leaderboardBtn">الترتيب العالمي</button>
         <button id="settingsBtn" type="button">الإعدادات</button>
         <button id="aboutBtn" type="button">حول اللعبة</button>
@@ -394,7 +428,7 @@
 <div id="leaderboardModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">
   <div id="leaderboardPanel">
     <h2 id="leaderboardTitle">الترتيب العالمي</h2>
-    <p id="leaderboardHint">أفضل 20 لاعب على مستوى العالم</p>
+    <p id="leaderboardHint">أفضل 10 لاعبين على مستوى العالم</p>
     <div id="leaderboardStatus">جارٍ تحميل النتائج...</div>
     <div id="leaderboardRows"></div>
     <button id="leaderboardClose">إغلاق</button>
@@ -414,6 +448,31 @@
       <button type="button" id="nameSkip">تخطّي</button>
     </div>
   </form>
+</div>
+
+<div id="shipModal" class="gmodal hidden" role="dialog" aria-modal="true" aria-labelledby="shipTitle">
+  <div class="gpanel shipPanel">
+    <h2 id="shipTitle">اختيار المركبة</h2>
+    <div id="walletRow">رصيدك: <b id="walletVal">0</b><i class="coinDot"></i></div>
+    <div id="cf">
+      <div id="cfGlow"></div><div id="cfPad"></div>
+      <div id="cfTrack"></div>
+    </div>
+    <div id="cfBar">
+      <button id="cfPrev" class="cfNav" type="button" aria-label="المركبة السابقة"></button>
+      <div id="cfDots"></div>
+      <button id="cfNext" class="cfNav" type="button" aria-label="المركبة التالية"></button>
+    </div>
+    <div id="cfInfo">
+      <b id="cfName"></b>
+      <small id="cfWeapon"></small>
+      <small id="cfPrice"></small>
+      <small id="cfDesc"></small>
+    </div>
+    <div id="shopMsg" aria-live="polite"></div>
+    <button id="cfPick" type="button">اختيار</button>
+    <button class="gclose" type="button" data-close>إغلاق</button>
+  </div>
 </div>
 
 <div id="settingsModal" class="gmodal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
@@ -452,6 +511,81 @@
     });
   }
   function fwd(src, real) { $(src).addEventListener('click', function () { $(real).click(); syncSound(); }); }
+  /* عارض المركبات: سحب يمينًا ويسارًا أو الأسهم، والمواصفات تحت المركبة */
+  var cfIdx = 0, cfDrag = 0, cfStart = null, cfBuilt = false, CF_SP = 96;
+  var CF_FALLBACK = 'data:image/svg+xml,' + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#bfefff'/><stop offset='1' stop-color='#2f8cff'/></linearGradient></defs><path d='M50 4L64 44L96 78V92L64 82L58 112H42L36 82L4 92V78L36 44Z' fill='url(#g)' stroke='#0a2a5a' stroke-width='3'/><path d='M50 22L58 50L50 62L42 50Z' fill='#0b2d6b'/></svg>");
+  function cfBuild() {
+    var tr = $('cfTrack'), dots = $('cfDots'); tr.innerHTML = ''; dots.innerHTML = '';
+    SHIPS.forEach(function (s) {
+      var it = document.createElement('div'); it.className = 'cfItem';
+      var img = document.createElement('img'); img.src = '1000555847.png'; img.alt = ''; img.draggable = false;
+      img.style.filter = 'hue-rotate(' + s.hue + 'deg) drop-shadow(0 12px 14px rgba(0, 10, 50, .75))';
+      img.onerror = function () { img.onerror = null; img.src = CF_FALLBACK; };
+      it.appendChild(img); tr.appendChild(it); dots.appendChild(document.createElement('i'));
+    });
+    cfBuilt = true;
+  }
+  function cfLayout() {
+    var n = SHIPS.length, items = $('cfTrack').children;
+    for (var i = 0; i < n; i++) {
+      var d = i - cfIdx; if (d > n / 2) d -= n; if (d < -n / 2) d += n;
+      var f = d - cfDrag / CF_SP, a = Math.abs(f), c = Math.min(a, 2.2), it = items[i];
+      it.style.transform = 'translateX(' + (-f * CF_SP) + 'px) translateZ(' + (-c * 90) + 'px) rotateY(' + (Math.max(-1, Math.min(1, f)) * 40) + 'deg) scale(' + (1 - c * 0.17) + ')';
+      it.style.opacity = a > 2.2 ? 0 : 1 - c * 0.3;
+      it.style.zIndex = 100 - Math.round(a * 10);
+      it.classList.toggle('locked', owned.indexOf(SHIPS[i].id) < 0);
+      it.classList.toggle('cur', d === 0 && Math.abs(cfDrag) < 6);
+    }
+  }
+  function cfInfo() {
+    var s = SHIPS[cfIdx], have = owned.indexOf(s.id) >= 0, sel = shipId === s.id;
+    $('cfName').textContent = s.name; $('cfWeapon').textContent = 'السلاح: ' + s.weapon; $('cfDesc').textContent = s.desc;
+    $('cfPrice').textContent = have ? 'مملوكة' : 'السعر: ' + s.price + ' عملة';
+    $('walletVal').textContent = wallet;
+    var btn = $('cfPick');
+    btn.textContent = sel ? 'مختارة' : (have ? 'اختيار' : 'شراء — ' + s.price);
+    btn.disabled = sel || (!have && (wallet < s.price || !leaderboardReady));
+    [].forEach.call($('cfDots').children, function (d, i) { d.classList.toggle('on', i === cfIdx); });
+  }
+  function cfGo(i) { var n = SHIPS.length; cfIdx = ((i % n) + n) % n; cfDrag = 0; cfLayout(); cfInfo(); }
+  var cfBox = $('cf');
+  cfBox.addEventListener('pointerdown', function (e) {
+    if (e.target.closest('.cfNav')) return;
+    cfStart = e.clientX; cfDrag = 0; $('cfTrack').classList.add('drag');
+    try { cfBox.setPointerCapture(e.pointerId); } catch (x) {}
+  });
+  cfBox.addEventListener('pointermove', function (e) { if (cfStart === null) return; cfDrag = e.clientX - cfStart; cfLayout(); });
+  function cfEnd(e) {
+    if (cfStart === null) return;
+    var dx = cfDrag; cfStart = null; $('cfTrack').classList.remove('drag');
+    if (dx > 40) cfGo(cfIdx + 1);                     // السحب لليمين يُظهر المركبة التي على اليسار
+    else if (dx < -40) cfGo(cfIdx - 1);
+    else if (Math.abs(dx) < 6 && e && e.type === 'pointerup') {   // نقرة على مركبة جانبية تنقلك إليها
+      var r = cfBox.getBoundingClientRect(), k = Math.round(-(e.clientX - (r.left + r.width / 2)) / CF_SP);
+      if (k !== 0 && Math.abs(k) <= 2) cfGo(cfIdx + k); else { cfDrag = 0; cfLayout(); }
+    } else { cfDrag = 0; cfLayout(); }
+  }
+  cfBox.addEventListener('pointerup', cfEnd); cfBox.addEventListener('pointercancel', cfEnd);
+  $('cfNext').addEventListener('click', function () { cfGo(cfIdx + 1); });
+  $('cfPrev').addEventListener('click', function () { cfGo(cfIdx - 1); });
+  $('cfPick').addEventListener('click', async function () {
+    var s = SHIPS[cfIdx], have = owned.indexOf(s.id) >= 0;
+    if (!have) {                                    // الشراء: الخادم يتحقق من السعر والرصيد
+      if (!leaderboardReady || wallet < s.price) return;
+      $('cfPick').disabled = true; $('shopMsg').textContent = '';
+      try { setWallet(await galaxyRpc('galaxy_buy_ship', { p_player_id: getPlayerId(), p_ship_id: s.id })); }
+      catch (e) { $('shopMsg').textContent = 'تعذّر الشراء، تأكد من الاتصال وحاول مجددًا.'; cfInfo(); return; }
+    }
+    shipId = s.id; saveShop(); applyShip(); cfLayout(); cfInfo();
+  });
+  $('shipBtn').addEventListener('click', function () {
+    if (!cfBuilt) cfBuild();
+    showM('shipModal');
+    for (var i = 0; i < SHIPS.length; i++) if (SHIPS[i].id === shipId) cfIdx = i;
+    cfGo(cfIdx);
+    $('shopMsg').textContent = leaderboardReady ? '' : 'المتجر يحتاج اتصالًا بالخادم.';
+    flushClaims().then(refreshWallet).then(function () { cfLayout(); cfInfo(); });   // مزامنة الرصيد عند فتح المتجر
+  });
   $('aboutBtn').addEventListener('click', function () { showM('aboutModal'); });
   $('settingsBtn').addEventListener('click', function () { $('settingsModal').classList.remove('fromPause'); syncSound(); showM('settingsModal'); });
   $('pauseSettingsBtn').addEventListener('click', function () { $('settingsModal').classList.add('fromPause'); syncSound(); showM('settingsModal'); });
@@ -466,5 +600,11 @@
 })();
 </script>
 
+<script>
+/* تفعيل عمل اللعبة بدون إنترنت (PWA) */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('service-worker.js').catch(function () {}); });
+}
+</script>
 </body>
         </html>
