@@ -52,6 +52,16 @@
   var FIRE_STEPS = [0, 100, 250, 500, 800];   // نقاط الوصول لرصاصة، 2، 3، 4، 5 رصاصات للمركبة العادية (كبّر الأرقام لتصعّب)
   var PRICES = { guard: 0, hunter: 500, spread: 1000, destroyer: 3500, falcon: 2500, tank: 1600 };   // بالعملات — لازم تطابق جدول galaxy_ships بالخادم
   SHIPS.forEach(function (s) { s.price = PRICES[s.id]; });
+  // صور المركبات الخاصة وأسلحتها (ضعها في نفس مجلد index.html): البقية تبقى بالتلوين المؤقت حتى تجهّز صورها
+  var SHIP_ART = {
+    hunter:    { ship: '1000556917.png', bullet: '1000556913.png' },   // المطارد: مركبة حمراء + ليزر أحمر
+    spread:    { ship: '1000556918.png', bullet: '1000556915.png' },   // المشتّت: مركبة بنفسجية + رصاص بنفسجي
+    destroyer: { ship: '1000556916.png', bullet: '1000556914.png' }    // المدمّر: مركبة برتقالية + رصاصة برتقالية
+  };
+  SHIPS.forEach(function (s) {
+    var a = SHIP_ART[s.id];
+    if (a) { s.src = a.ship; s.img = loadImg(a.ship); s.bimg = loadImg(a.bullet); }
+  });
   var shipId = 'guard', skins = {};
   // الرصيد والمركبات المملوكة محفوظان على الخادم (Supabase) فقط؛ محليًا نحفظ اسم المركبة المختارة
   var savedShip = 'guard', owned = ['guard'], wallet = 0, runCoins = 0, cfloats = [], runToken = null, runSeq = 0, pendingClaims = [];
@@ -98,7 +108,10 @@
     var st = curShip();
     ship.st = st; ship.fireInt = st.fire; ship.stepMul = 1; ship.invT = 1.4; ship.shieldMul = 1;
     var hs = document.getElementById('heroShip');                 // صورة الشاشة الرئيسية تتبع المركبة المختارة
-    if (hs) hs.style.filter = 'hue-rotate(' + st.hue + 'deg) drop-shadow(0 6px 14px rgba(40, 140, 255, .6))';
+    if (hs) {
+      if (st.src) { hs.src = st.src; hs.style.filter = 'drop-shadow(0 6px 14px rgba(40, 140, 255, .6))'; }
+      else { hs.src = '1000555847.png'; hs.style.filter = 'hue-rotate(' + st.hue + 'deg) drop-shadow(0 6px 14px rgba(40, 140, 255, .6))'; }
+    }
   }
   // تلوين مؤقت لصورة المركبة حتى تجهّز صورًا خاصة بكل مركبة
   function hueCanvas(src, deg) {
@@ -119,6 +132,7 @@
     return c;
   }
   function skinImg() {
+    if (ship.st && ship.st.img && imgReady(ship.st.img)) return ship.st.img;   // صورة المركبة الخاصة
     var hu = ship.st ? ship.st.hue : 0;
     if (!hu || !imgReady(shipImg)) return shipImg;
     return skins[hu] || (skins[hu] = hueCanvas(shipImg, hu));
@@ -410,6 +424,7 @@
     // strong = المركبة القوية (مكافأة الزعيم): ضرر إضافي + تقوية خاصة لكل سلاح
     if (w === 'laser') { offs = strong ? [-6, 6] : [0]; v = 950 * S; kind = 'laser'; }
     else if (w === 'fan') {
+      kind = 'fan';
       if (strong) { offs = [-24, -16, -8, 0, 8, 16, 24]; vxs = [-120, -80, -40, 0, 40, 80, 120]; }
       else { offs = [-16, -8, 0, 8, 16]; vxs = [-90, -45, 0, 45, 90]; }
     }
@@ -426,7 +441,7 @@
     if (ship.multi > 0) { offs = [-18, -9, 0, 9, 18]; vxs = [-70, -35, 0, 35, 70]; }   // مكافأة الطلقات الإضافية
     for (var i = 0; i < offs.length; i++) {
       bullets.push({ x: ship.x + offs[i] * S, y: ship.y - 16 * S, v: v, vx: vxs ? vxs[i] * S : 0, dmg: strong ? dmg + 1 : dmg,
-                     homing: homing, kind: kind, pierce: pierce, hitL: pierce ? [] : null, block: block });
+                     homing: homing, kind: kind, pierce: pierce, hitL: pierce ? [] : null, block: block, art: ship.st.bimg });
     }
   }
 
@@ -629,4 +644,4 @@
       var q = parts[p]; q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt;
       if (q.t > q.life) parts.splice(p, 1);
     }
-    }
+           }
