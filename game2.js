@@ -147,6 +147,21 @@
   var FLAME_TOP = 0.775;
   var FLAME_BANDS = [[0.25, 0.405], [0.405, 0.595], [0.595, 0.75]];
 
+  // أحجام صور الأسلحة (عرض، ارتفاع) بالنسبة لـ S
+  var BULLET_SIZE = { laser: [10.5, 70], pierce: [16, 69], fan: [13, 39] };
+
+  // مركبة بصورة خاصة: تُرسم بنسبتها الأصلية مع وميض خفيف في منطقة المحركات
+  function drawCustomSprite(img, x, y, w, h) {
+    ctx.drawImage(img, x, y, w, h);
+    var fy = 0.62, k = 1 + 0.14 * Math.sin(clock * 24) + 0.06 * Math.sin(clock * 41);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(clock * 33);
+    ctx.drawImage(img, 0, img.naturalHeight * fy, img.naturalWidth, img.naturalHeight * (1 - fy),
+                  x, y + h * fy, w, h * (1 - fy) * k);
+    ctx.restore();
+  }
+
   function drawShipSprite(img, x, y, sz) {
     var iw = img.naturalWidth, ih = img.naturalHeight, fy = FLAME_TOP, b;
     ctx.save();                                      // 1) الجسم بدون ألسنة اللهب
@@ -178,18 +193,21 @@
     if (ship.inv > 0 && Math.floor(ship.inv * 12) % 2 === 0) return;
     var sz = (strong ? 70 : 60) * S;
     var x = ship.x - sz / 2, y = ship.y - sz * 0.55;
+    var custom = !!(ship.st && ship.st.img === img);              // مركبة بصورة خاصة (غير الزرقاء)
+    var dw = sz, dh = sz, dx = x, dy = y;
+    if (custom) { dw = sz * 1.3; dh = dw * img.naturalHeight / img.naturalWidth; dx = ship.x - dw / 2; dy = ship.y - sz * 0.05 - dh / 2; }
     ctx.save();
     if (strong && !own) {                                       // مؤقتًا: هالة ذهبية بدل صورة المركبة القوية
       ctx.shadowColor = '#ffd166';
       ctx.shadowBlur = 16 + 6 * Math.sin(clock * 8);
     }
-    drawShipSprite(img, x, y, sz);
+    if (custom) drawCustomSprite(img, dx, dy, dw, dh); else drawShipSprite(img, x, y, sz);
     if (ship.flash > 0) {                                       // وميض وحلقة عند الالتقاط
       var k = Math.min(1, ship.flash / 0.6);
       ctx.shadowBlur = 0;
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.8 * k;
-      ctx.drawImage(img, x, y, sz, sz);
+      ctx.drawImage(img, dx, dy, dw, dh);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = k;
       ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 3 * S;
@@ -332,6 +350,13 @@
     ctx.shadowColor = '#fff27a'; ctx.shadowBlur = 8;
     for (var i = 0; i < bullets.length; i++) {
       var bl = bullets[i];
+      if (bl.art && imgReady(bl.art)) {       // أسلحة المركبات الخاصة بصورها: ليزر أحمر / رصاص بنفسجي / رصاصة برتقالية
+        var bs = BULLET_SIZE[bl.kind] || BULLET_SIZE.pierce;
+        ctx.save(); ctx.shadowBlur = 0; ctx.translate(bl.x, bl.y);
+        ctx.rotate(Math.atan2(bl.vx || 0, bl.v));
+        ctx.drawImage(bl.art, -bs[0] / 2 * S, -bs[1] / 2 * S, bs[0] * S, bs[1] * S);
+        ctx.restore(); continue;
+      }
       if (bl.kind) {                          // أشكال أسلحة المركبات المميّزة
         ctx.save(); ctx.translate(bl.x, bl.y);
         if (bl.kind === 'laser') {
@@ -376,35 +401,6 @@
         ctx.drawImage(yellowBulletSprite() || powerBulletImg, -8 * S, -12.7 * S, 16 * S, 25.4 * S);
         ctx.restore();
       } else ctx.fillRect(bl.x - 2 * S, bl.y - 8 * S, 4 * S, 14 * S);
-    }
-    ctx.shadowBlur = 0;
-    for (var a = 0; a < aliens.length; a++) drawAlien(aliens[a]);
-    for (var ei = 0; ei < ebullets.length; ei++) {
-      var eb = ebullets[ei], ea = Math.atan2(eb.vy, eb.vx);
-      ctx.save(); ctx.translate(eb.x, eb.y); ctx.rotate(ea);
-      if (eb.b && bossBulletImg.complete && bossBulletImg.naturalWidth > 0) {   // صورة طلقة الزعيم تدور حول نفسها
-        ctx.shadowBlur = 0; ctx.rotate(clock * 6);
-        ctx.drawImage(bossBulletImg, -22 * S, -22 * S, 44 * S, 44 * S);
-      } else if (eb.b) {                                   // «عين» صغيرة بألوان الزعيم: جسم نيلي وهالة بنفسجية وقزحية برتقالية بحدقة طولية
-        ctx.shadowColor = '#d23bff'; ctx.shadowBlur = 16;
-        ctx.fillStyle = 'rgba(196,59,255,0.35)';
-        ctx.beginPath(); ctx.ellipse(-8 * S, 0, 16 * S, 6 * S, 0, 0, 6.283); ctx.fill();
-        ctx.fillStyle = '#2a1a9a'; ctx.strokeStyle = '#c43bff'; ctx.lineWidth = 2 * S;
-        ctx.beginPath(); ctx.arc(0, 0, 8 * S, 0, 6.283); ctx.fill(); ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#ff7a1a'; ctx.beginPath(); ctx.arc(0, 0, 5 * S, 0, 6.283); ctx.fill();
-        ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.arc(0, 0, 2.7 * S, 0, 6.283); ctx.fill();
-        ctx.fillStyle = '#12002a'; ctx.beginPath(); ctx.ellipse(0, 0, 4 * S, 1.1 * S, 0, 0, 6.283); ctx.fill();
-      } else if (monsterBulletImg.complete && monsterBulletImg.naturalWidth > 0) {   // كرة نار بذيل قصير لرصاص الوحوش
-        ctx.shadowBlur = 0;
-        ctx.drawImage(monsterBulletImg, -31 * S, -8.5 * S, 46 * S, 17 * S);
-      } else {                                      // احتياطي: شهاب برتقالي مدبّب
-        ctx.shadowColor = '#ff8a3d'; ctx.shadowBlur = 10;
-        ctx.fillStyle = '#ff8a3d';
-        ctx.beginPath(); ctx.moveTo(6 * S, 0); ctx.lineTo(-4 * S, -4.5 * S); ctx.lineTo(-14 * S, 0); ctx.lineTo(-4 * S, 4.5 * S); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#ffe9a8'; ctx.beginPath(); ctx.arc(0, 0, 2.6 * S, 0, 6.283); ctx.fill();
-      }
-      ctx.restore();
     }
     ctx.shadowBlur = 0;
     drawDrops(); drawCoins();
@@ -532,4 +528,4 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
-        
+
