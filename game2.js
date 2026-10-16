@@ -172,8 +172,8 @@
 
   function drawShip() {
     var strong = ship.power > 0 && !(ship.power < 2 && Math.floor(clock * 10) % 2 === 0);   // يومض قبل انتهاء المفعول
-    var own = strong && imgReady(powerShipImg);                 // هل توجد صورة للمركبة القوية؟
-    var img = own ? powerShipImg : shipImg;
+    var own = false;                                            // تبقى المركبة المختارة ظاهرة مع هالة ذهبية (بدل استبدالها بصورة المركبة القوية)
+    var img = own ? powerShipImg : skinImg();
     if (!imgReady(img)) { drawShipVector(); return; }           // احتياط: الرسم القديم
     if (ship.inv > 0 && Math.floor(ship.inv * 12) % 2 === 0) return;
     var sz = (strong ? 70 : 60) * S;
@@ -251,6 +251,30 @@
     }
   }
 
+  function drawCoins() {                                    // +N ذهبية ترتفع من مكان سقوط الوحش
+    if (!cfloats.length) return;
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 ' + 15 * S + 'px Tajawal, sans-serif';
+    ctx.fillStyle = '#ffd166'; ctx.shadowColor = '#ffb703'; ctx.shadowBlur = 6;
+    for (var i = 0; i < cfloats.length; i++) {
+      ctx.globalAlpha = Math.max(0, 1 - cfloats[i].t / 0.9);
+      ctx.fillText('+' + cfloats[i].n, cfloats[i].x, cfloats[i].y);
+    }
+    ctx.restore();
+  }
+  function drawCoinHud() {                                  // رصيد العملات أعلى يسار الشاشة أثناء اللعب
+    if (!running) return;
+    ctx.save();
+    ctx.fillStyle = '#ffb703'; ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(18 * S, 20 * S, 8 * S, 0, 6.283); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#ffe58a';
+    ctx.beginPath(); ctx.arc(18 * S, 20 * S, 4.6 * S, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#ffd166'; ctx.font = '700 ' + 17 * S + 'px Tajawal, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(wallet + runCoins), 32 * S, 21 * S);
+    ctx.restore();
+  }
+
   function drawDrops() {
     for (var i = 0; i < drops.length; i++) {
       var d = drops[i];
@@ -308,6 +332,29 @@
     ctx.shadowColor = '#fff27a'; ctx.shadowBlur = 8;
     for (var i = 0; i < bullets.length; i++) {
       var bl = bullets[i];
+      if (bl.kind) {                          // أشكال أسلحة المركبات المميّزة
+        ctx.save(); ctx.translate(bl.x, bl.y);
+        if (bl.kind === 'laser') {
+          ctx.shadowColor = '#5ee7ff'; ctx.shadowBlur = 10; ctx.fillStyle = '#9ff0ff'; ctx.fillRect(-1.8 * S, -17 * S, 3.6 * S, 34 * S);
+          ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.fillRect(-0.7 * S, -17 * S, 1.4 * S, 34 * S);
+        } else if (bl.kind === 'pierce') {
+          ctx.shadowColor = '#c9a0ff'; ctx.shadowBlur = 12; ctx.fillStyle = '#d9b8ff';
+          ctx.beginPath(); ctx.moveTo(0, -24 * S); ctx.lineTo(5.5 * S, 0); ctx.lineTo(0, 15 * S); ctx.lineTo(-5.5 * S, 0); ctx.closePath(); ctx.fill();
+          ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.moveTo(0, -15 * S); ctx.lineTo(2 * S, 0); ctx.lineTo(0, 8 * S); ctx.lineTo(-2 * S, 0); ctx.closePath(); ctx.fill();
+        } else if (bl.kind === 'missile') {
+          ctx.rotate(Math.atan2(bl.vx || 0, bl.v));
+          ctx.shadowColor = '#ff8a3d'; ctx.shadowBlur = 8; ctx.fillStyle = 'rgba(255,138,61,.85)';
+          ctx.beginPath(); ctx.moveTo(-3 * S, 6 * S); ctx.lineTo(0, 20 * S); ctx.lineTo(3 * S, 6 * S); ctx.closePath(); ctx.fill();   // لهب
+          ctx.shadowBlur = 0; ctx.fillStyle = '#ffe9a8'; ctx.fillRect(-3 * S, -8 * S, 6 * S, 15 * S);
+          ctx.fillStyle = '#ff6b4a'; ctx.beginPath(); ctx.moveTo(-3 * S, -8 * S); ctx.lineTo(0, -15 * S); ctx.lineTo(3 * S, -8 * S); ctx.closePath(); ctx.fill();
+        } else if (bl.kind === 'heavy') {
+          ctx.shadowColor = '#ffb347'; ctx.shadowBlur = 14; ctx.fillStyle = '#ff9a3c';
+          ctx.beginPath(); ctx.arc(0, 0, 8 * S, 0, 6.283); ctx.fill();
+          ctx.shadowBlur = 0; ctx.fillStyle = '#fff27a'; ctx.beginPath(); ctx.arc(0, 0, 4 * S, 0, 6.283); ctx.fill();
+        }
+        ctx.restore(); continue;
+      }
       if (bl.dmg > 1) {                       // طلقات المركبة القوية: شكلها الأزرق المتوهج
         if (imgReady(powerBulletImg)) {
           ctx.save();
@@ -360,8 +407,9 @@
       ctx.restore();
     }
     ctx.shadowBlur = 0;
-    drawDrops();
+    drawDrops(); drawCoins();
     if (running || lives > 0) drawShip();
+    drawCoinHud();
     drawShield();
     for (var p = 0; p < parts.length; p++) {
       var q = parts[p]; ctx.globalAlpha = 1 - q.t / q.life; ctx.fillStyle = q.c;
@@ -484,4 +532,4 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
-    
+        
