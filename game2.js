@@ -434,8 +434,10 @@
 
   function loop(now) {
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (running && !paused) update(dt);
-    render(paused ? 0 : dt);
+    try {                                  // أي خطأ في إطار واحد لا يوقف اللعبة كلها
+      if (running && !paused) update(dt);
+      render(paused ? 0 : dt);
+    } catch (err) { console.error('frame error', err); }
     if (running) requestAnimationFrame(loop);
   }
 
@@ -545,4 +547,5 @@
 
   resize(); hearts();
   last = performance.now(); render(0.016);
-        
+
+          
