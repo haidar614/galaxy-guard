@@ -387,6 +387,12 @@
   line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 0 8px rgba(120,200,255,.45); }
 #coinPlus { display: none; }          /* احذف هذا السطر إن أردت ظهور زر + */
 #homeHead { margin-top: 40px; }       /* ينزّل العنوان كي لا يتداخل مع العداد */
+#rewardLine { display: flex; align-items: center; justify-content: center; gap: 8px; direction: rtl; flex: 0 0 auto;
+  color: #ffd166; font-weight: 700; font-size: 1rem; text-shadow: 0 0 10px rgba(255,183,3,.35); }
+#rewardLine[hidden] { display: none; }
+#overlay:not(.over) #rewardLine { display: none; }
+#rewardLine bdi { font-weight: 800; font-variant-numeric: tabular-nums; }
+#rewardLine .coinIcon { width: 22px; height: 22px; }
 </style>
 </head>
 <body>
@@ -407,12 +413,7 @@
         <div id="ovSub" dir="ltr">GALAXY GUARD</div>
       </div>
       <p id="ovText">دافع عن المجرّة وأسقط الوحوش.</p>
-      #rewardLine { display: flex; align-items: center; justify-content: center; gap: 8px; direction: rtl; flex: 0 0 auto;
-      color: #ffd166; font-weight: 700; font-size: 1rem; text-shadow: 0 0 10px rgba(255,183,3,.35); }
-      #rewardLine[hidden] { display: none; }
-      #overlay:not(.over) #rewardLine { display: none; }
-      #rewardLine bdi { font-weight: 800; font-variant-numeric: tabular-nums; }
-      #rewardLine .coinIcon { width: 22px; height: 22px; }
+      <div id="rewardLine" hidden><span>عملة ربحتها</span><bdi dir="ltr" id="rewardVal">+0</bdi><i class="coinIcon"></i></div>
       <div id="homeHero" aria-hidden="true">
         <div id="heroPad"></div>
         <img id="heroShip" src="1000555847.png" alt="" onerror="this.remove()">
