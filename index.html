@@ -389,15 +389,17 @@
 #homeHead { margin-top: 40px; }       /* ينزّل العنوان كي لا يتداخل مع العداد */
 #rewardLine { display: flex; align-items: center; justify-content: center; gap: 8px; direction: rtl; flex: 0 0 auto;
   color: #ffd166; font-weight: 700; font-size: 1rem; text-shadow: 0 0 10px rgba(255,183,3,.35); }
-#rewardLine[hidden] { display: none; }
-#overlay:not(.over) #rewardLine { display: none; }
-#rewardLine bdi { font-weight: 800; font-variant-numeric: tabular-nums; }
-#rewardLine .coinIcon { width: 22px; height: 22px; }
-#resultClose { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 14px; z-index: 2;
-  width: 34px; height: 34px; margin: 0; padding: 0; border-radius: 50%; font-size: 1.1rem; line-height: 1; color: #dff4ff;
-  border: 1px solid rgba(120,170,255,.55); background: linear-gradient(180deg, #1a2d63, #0b1639);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 4px 12px rgba(0,0,0,.45); }
-#overlay:not(.over) #resultClose { display: none; }
+#overlay.over #ovText { display: none; }
+#overlay:not(.over) #resultCard, #resultCard[hidden] { display: none; }
+#resultCard { flex: 0 0 auto; width: 100%; max-width: 340px; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 16px; border: 1px solid rgba(120,170,255,.45); background: linear-gradient(180deg, #14245a, #0a1238);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 3px 10px rgba(0,0,0,.4); }
+.rs { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid rgba(120,170,255,.2); }
+.rs small { font-size: .95rem; opacity: .85; }
+.rs b { display: flex; align-items: center; gap: 6px; font-size: 1.15rem; color: #bff3ff; font-variant-numeric: tabular-nums; direction: ltr; }
+.rs.gold b { color: #ffd166; text-shadow: 0 0 10px rgba(255,183,3,.4); }
+.rs.gold .coinIcon { width: 20px; height: 20px; }
+#rsRecord { padding: 9px; background: rgba(255,183,3,.08); text-align: center; font-weight: 800; color: #ffd166; text-shadow: 0 0 10px rgba(255,183,3,.4); }
 </style>
 </head>
 <body>
@@ -419,7 +421,13 @@
         <div id="ovSub" dir="ltr">GALAXY GUARD</div>
       </div>
       <p id="ovText">دافع عن المجرّة وأسقط الوحوش.</p>
-      <div id="rewardLine" hidden><span>عملة ربحتها</span><bdi dir="ltr" id="rewardVal">+0</bdi><i class="coinIcon"></i></div>
+      <div id="resultCard" hidden>
+  <div class="rs"><small>النقاط</small><b id="rsScore">0</b></div>
+  <div class="rs"><small>المستوى</small><b id="rsLevel">1</b></div>
+  <div class="rs"><small>أفضل نتيجة</small><b id="rsBest">0</b></div>
+  <div class="rs gold"><small>عملة ربحتها</small><b><bdi dir="ltr" id="rsCoins">+0</bdi><i class="coinIcon"></i></b></div>
+  <div id="rsRecord" hidden>رقم قياسي جديد!</div>
+      </div>
       <div id="homeHero" aria-hidden="true">
         <div id="heroPad"></div>
         <img id="heroShip" src="1000555847.png" alt="" onerror="this.remove()">
