@@ -374,7 +374,19 @@
     background: rgba(130, 200, 255, .12); border: 1px solid rgba(130, 200, 255, .32); color: #dff4ff;
   }
   @media (prefers-reduced-motion: reduce) { #heroShip, #homeMenu #startBtn { animation: none; } }
-
+/* ===== عداد العملات ===== */
+#coinBar { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 14px; z-index: 2;
+  display: flex; align-items: center; gap: 8px; direction: rtl; height: 34px; padding: 0 6px 0 14px;
+  border-radius: 999px; border: 1px solid rgba(120,170,255,.55);
+  background: linear-gradient(180deg, #1a2d63, #0b1639);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 6px rgba(0,0,0,.35), 0 4px 12px rgba(0,0,0,.45); }
+.coinIcon { display: inline-block; width: 24px; height: 24px; flex: none; border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #fff6c4, #ffc83d 55%, #e09a00);
+  border: 2px solid #b87400; box-shadow: 0 0 8px rgba(255,209,102,.55), inset 0 1px 1px rgba(255,255,255,.7); }
+#coinBar b { min-width: 34px; text-align: center; color: #fff; font-size: .95rem; font-weight: 800;
+  line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 0 8px rgba(120,200,255,.45); }
+#coinPlus { display: none; }          /* احذف هذا السطر إن أردت ظهور زر + */
+#homeHead { margin-top: 40px; }       /* ينزّل العنوان كي لا يتداخل مع العداد */
 </style>
 </head>
 <body>
@@ -389,7 +401,8 @@
     <canvas id="cv"></canvas>
     <div id="levelToast" aria-live="polite"></div>
     <div id="overlay">
-      <div id="homeHead">
+    <div id="coinBar"><i class="coinIcon"></i><b id="coinBarVal">0</b><button id="coinPlus" type="button" aria-label="المتجر">+</button></div>
+    <div id="homeHead">
         <h1 id="ovTitle">حارس المجرّة</h1>
         <div id="ovSub" dir="ltr">GALAXY GUARD</div>
       </div>
