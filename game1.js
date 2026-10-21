@@ -274,7 +274,8 @@
     ovTitle.textContent = withdrew === true ? 'انسحبت من المعركة' : 'سقطت المركبة';
     sfx.over();
     startBtn.textContent = 'قاتل من جديد';
-    if (runCoins && runToken) ovText.textContent += ' جمعت ' + runCoins + ' عملة.';
+    var rl = document.getElementById('rewardLine');
+    if (rl) { rl.hidden = !(runCoins && runToken); document.getElementById('rewardVal').textContent = '+' + (runCoins || 0); }
     claimRun();
     overlay.classList.remove('hidden'); overlay.classList.add('over');
     startBtn.focus();
