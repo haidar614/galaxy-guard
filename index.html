@@ -407,6 +407,12 @@
         <div id="ovSub" dir="ltr">GALAXY GUARD</div>
       </div>
       <p id="ovText">دافع عن المجرّة وأسقط الوحوش.</p>
+      #rewardLine { display: flex; align-items: center; justify-content: center; gap: 8px; direction: rtl; flex: 0 0 auto;
+      color: #ffd166; font-weight: 700; font-size: 1rem; text-shadow: 0 0 10px rgba(255,183,3,.35); }
+      #rewardLine[hidden] { display: none; }
+      #overlay:not(.over) #rewardLine { display: none; }
+      #rewardLine bdi { font-weight: 800; font-variant-numeric: tabular-nums; }
+      #rewardLine .coinIcon { width: 22px; height: 22px; }
       <div id="homeHero" aria-hidden="true">
         <div id="heroPad"></div>
         <img id="heroShip" src="1000555847.png" alt="" onerror="this.remove()">
