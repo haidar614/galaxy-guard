@@ -70,11 +70,12 @@
   try { var svd = localStorage.getItem('galaxy_ship'); if (svd) savedShip = svd; } catch (e) {}
   function saveShop() { savedShip = shipId; try { localStorage.setItem('galaxy_ship', shipId); } catch (e) {} }
   function galaxyRpc(name, body) { return supabaseRequest('rpc/' + name, { method: 'POST', body: JSON.stringify(body) }); }
-  function setWallet(r) {
+    function setWallet(r) {
     wallet = r.coins; owned = r.ships || ['guard'];
+    var cb = document.getElementById('coinBarVal'); if (cb) cb.textContent = wallet;   // ← الجديد
     shipId = owned.indexOf(savedShip) >= 0 ? savedShip : 'guard';
     applyShip();
-  }
+    }
   function refreshWallet() {
     if (!leaderboardReady) return Promise.resolve();
     return galaxyRpc('galaxy_get_wallet', { p_player_id: getPlayerId() }).then(setWallet).catch(function (e) { console.warn('wallet load failed', e); });
